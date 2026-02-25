@@ -9,7 +9,8 @@ const firebaseConfig = {
   projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "ia-agroserv",
   storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || "ia-agroserv.firebasestorage.app",
   messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || "580294378501",
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || "1:580294378501:web:522ba36a4586ee180b886c"
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || "1:580294378501:web:522ba36a4586ee180b886c",
+  measurementId: "G-0ER0BZ3G9B"
 };
 
 // Verificação de segurança para ajudar no debug
