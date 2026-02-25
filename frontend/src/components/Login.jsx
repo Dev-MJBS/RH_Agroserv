@@ -32,12 +32,13 @@ const Login = () => {
         setIsLogin(true);
       }
     } catch (err) {
-      console.error(err);
+      console.error("Firebase Auth Error:", err);
       if (err.code === 'auth/user-not-found') setError('Usuário não encontrado.');
       else if (err.code === 'auth/wrong-password') setError('Senha incorreta.');
       else if (err.code === 'auth/email-already-in-use') setError('Este e-mail já está em uso.');
       else if (err.code === 'auth/weak-password') setError('A senha deve ter pelo menos 6 caracteres.');
-      else setError('Erro na autenticação. Verifique seu API Key e se o Firestore está ativo.');
+      else if (err.code === 'auth/invalid-api-key') setError('API Key inválida. Verifique o arquivo .env no Netlify.');
+      else setError(`Erro: ${err.message || 'Verifique sua conexão e API Key'}`);
     }
   };
 
