@@ -12,6 +12,8 @@ import {
   FileText, Users, DollarSign, PieChart as PieChartIcon 
 } from 'lucide-react';
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+
 const Dashboard = ({ user, isAdmin }) => {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -65,10 +67,9 @@ const Dashboard = ({ user, isAdmin }) => {
   };
 
   const fetchData = async () => {
-    setLoading(true);
     try {
       const token = await user.getIdToken();
-      const response = await axios.get('http://localhost:8000/folha', {
+      const response = await axios.get(`${API_URL}/payroll-data`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setData(response.data);
@@ -94,7 +95,7 @@ const Dashboard = ({ user, isAdmin }) => {
 
     try {
       const token = await user.getIdToken();
-      await axios.post('http://localhost:8000/upload-payroll', formData, {
+      await axios.post(`${API_URL}/upload-payroll`, formData, {
         headers: { 
           Authorization: `Bearer ${token}`,
           'Content-Type': 'multipart/form-data'
