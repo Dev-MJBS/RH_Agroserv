@@ -1,10 +1,13 @@
 'use client';
 import { useState, useEffect } from 'react';
+import dynamic from 'next/dynamic';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase';
-import Login from '../components/Login';
-import Dashboard from '../components/Dashboard';
+
+// Carregar componentes apenas no lado do cliente (SSR desativado)
+const Login = dynamic(() => import('../components/Login'), { ssr: false });
+const Dashboard = dynamic(() => import('../components/Dashboard'), { ssr: false });
 
 export default function Home() {
   const [user, setUser] = useState(null);
