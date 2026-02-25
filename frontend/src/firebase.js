@@ -12,6 +12,11 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID
 };
 
+// Verificação de segurança para ajudar no debug
+if (firebaseConfig.apiKey === "COLE_AQUI_SUA_API_KEY" || !firebaseConfig.apiKey) {
+  console.error("ERRO CRÍTICO: Você ainda não configurou a API Key do Firebase no Netlify!");
+}
+
 // Initialize Firebase only if no apps are initialized (for Next.js SSR)
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
 export const auth = getAuth(app);
