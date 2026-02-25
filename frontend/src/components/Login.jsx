@@ -1,3 +1,4 @@
+'use client';
 import React, { useState } from 'react';
 import { auth, db } from '../firebase';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
@@ -100,7 +101,5 @@ const Login = () => {
     </div>
   );
 };
-
-export default Login;
 
 export default Login;
