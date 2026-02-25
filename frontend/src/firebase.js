@@ -14,10 +14,18 @@ const firebaseConfig = {
 };
 
 // Verificação de segurança para ajudar no debug
-if (firebaseConfig.apiKey === "COLE_AQUI_SUA_API_KEY") {
-  console.error("ERRO CRÍTICO: Você ainda não configurou a API Key do Firebase no Netlify!");
+if (!firebaseConfig.apiKey) {
+  console.error("ERRO CRÍTICO: Variável NEXT_PUBLIC_FIREBASE_API_KEY não foi encontrada.");
+}
+
+if (!firebaseConfig.appId) {
+  console.error("ERRO CRÍTICO: Variável NEXT_PUBLIC_FIREBASE_APP_ID não foi encontrada.");
+}
+
+if (firebaseConfig.apiKey && firebaseConfig.apiKey !== "undefined") {
+  console.log("Firebase initialized successfully with Key starting with:", firebaseConfig.apiKey.substring(0, 10));
 } else {
-  console.log("Firebase initialized with API Key:", firebaseConfig.apiKey.substring(0, 10) + "...");
+  console.error("Firebase API Key is missing or invalid. Check your Netlify environment variables.");
 }
 
 // Initialize Firebase only if no apps are initialized (for Next.js SSR)
