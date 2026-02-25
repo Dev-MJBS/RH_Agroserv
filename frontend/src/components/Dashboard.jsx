@@ -1,27 +1,83 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { auth } from '../firebase';
+import { auth, db } from '../firebase';
 import { signOut } from 'firebase/auth';
+import { collection, query, where, getDocs, updateDoc, doc, deleteDoc } from 'firebase/firestore';
 import { 
   PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend,
   BarChart, Bar, XAxis, YAxis, CartesianGrid
 } from 'recharts';
 import { 
-  Upload, Download, Search, LogOut, Plus, 
+  Upload, Download, Search, LogOut, Plus, ShieldCheck, Check, X,
   FileText, Users, DollarSign, PieChart as PieChartIcon 
 } from 'lucide-react';
 
-const Dashboard = ({ user }) => {
+const Dashboard = ({ user, isAdmin }) => {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
+  const [pendingUsers, setPendingUsers] = useState([]);
   const [mesReferencia, setMesReferencia] = useState('');
   const [payrollMapFile, setPayrollMapFile] = useState(null);
   const [conveniaFile, setConveniaFile] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
 
-  // ...existing code...
+  useEffect(() => {
+    fetchData();
+    if (isAdmin) {
+      fetchPendingUsers();
+    }
+  }, [isAdmin]);
+
+  const fetchPendingUsers = async () => {
+    try {
+      const q = query(collection(db, "users"), where("isApproved", "==", false));
+      const querySnapshot = await getDocs(q);
+      const users = [];
+      querySnapshot.forEach((doc) => {
+        users.push({ id: doc.id, ...doc.data() });
+      });
+      setPendingUsers(users);
+    } catch (err) {
+      console.error("Erro ao buscar usuários pendentes", err);
+    }
+  };
+
+  const approveUser = async (userId) => {
+    try {
+      await updateDoc(doc(db, "users", userId), { isApproved: true });
+      fetchPendingUsers();
+    } catch (err) {
+      alert("Erro ao aprovar usuário");
+    }
+  };
+
+  const deleteUser = async (userId) => {
+    if (!confirm("Excluir solicitação?")) return;
+    try {
+      await deleteDoc(doc(db, "users", userId));
+      fetchPendingUsers();
+    } catch (err) {
+      alert("Erro ao excluir usuário");
+    }
+  };
+
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      const token = await user.getIdToken();
+      const response = await axios.get('http://localhost:8000/folha', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setData(response.data);
+    } catch (err) {
+      console.error("Erro ao buscar dados da folha", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleUpload = async (e) => {
     e.preventDefault();
@@ -112,8 +168,23 @@ const Dashboard = ({ user }) => {
         <div className="flex items-center gap-2">
           <FileText className="text-blue-600" />
           <h1 className="text-xl font-bold text-gray-800">RH Agroserv Financeiro</h1>
+          {isAdmin && <span className="ml-2 px-2 py-0.5 bg-red-100 text-red-700 text-[10px] font-black rounded-full uppercase tracking-wider">Admin</span>}
         </div>
         <div className="flex gap-4 items-center">
+          {isAdmin && (
+            <button 
+              onClick={() => setIsAdminModalOpen(true)}
+              className="relative flex items-center gap-2 bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition"
+            >
+              <Users size={18} /> 
+              Gerenciar Usuários
+              {pendingUsers.length > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] w-5 h-5 flex items-center justify-center rounded-full border-2 border-white font-bold">
+                  {pendingUsers.length}
+                </span>
+              )}
+            </button>
+          )}
           <button 
             onClick={() => setIsModalOpen(true)}
             className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
@@ -128,6 +199,18 @@ const Dashboard = ({ user }) => {
           </button>
         </div>
       </header>
+
+      {isAdmin && (
+        <div className="mb-8 p-4 bg-yellow-50 border-l-4 border-yellow-400 rounded-lg">
+          <p className="text-yellow-800 font-semibold mb-2">Painel de Administração</p>
+          <button 
+            onClick={() => setIsAdminModalOpen(true)}
+            className="flex items-center gap-2 bg-yellow-500 text-white px-4 py-2 rounded-lg hover:bg-yellow-600 transition"
+          >
+            <ShieldCheck size={18} /> Gerenciar Aprovações
+          </button>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
@@ -320,6 +403,47 @@ const Dashboard = ({ user }) => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Gerenciamento de Usuários */}
+      {isAdminModalOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden">
+            <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="text-blue-600" />
+                <h3 className="text-xl font-bold text-gray-800">Solicitações de Acesso</h3>
+              </div>
+              <button onClick={() => setIsAdminModalOpen(false)} className="text-gray-400 hover:text-gray-600">
+                <X size={24} />
+              </button>
+            </div>
+            <div className="max-h-[60vh] overflow-y-auto p-6">
+              {pendingUsers.length === 0 ? (
+                <div className="text-center py-10 text-gray-500">Nenhuma solicitação pendente.</div>
+              ) : (
+                <div className="space-y-4">
+                  {pendingUsers.map(u => (
+                    <div key={u.id} className="flex items-center justify-between p-4 border rounded-xl">
+                      <div>
+                        <p className="font-bold text-gray-800">{u.email}</p>
+                        <p className="text-xs text-gray-400">Desde: {new Date(u.createdAt).toLocaleDateString()}</p>
+                      </div>
+                      <div className="flex gap-2">
+                        <button onClick={() => approveUser(u.id)} className="bg-green-600 text-white p-2 rounded-lg hover:bg-green-700">
+                          <Check size={18} />
+                        </button>
+                        <button onClick={() => deleteUser(u.id)} className="bg-red-100 text-red-600 p-2 rounded-lg hover:bg-red-200">
+                          <X size={18} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}

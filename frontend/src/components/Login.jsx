@@ -1,51 +1,77 @@
 import React, { useState } from 'react';
-import { auth, googleProvider } from '../firebase';
-import { signInWithPopup, signInWithEmailAndPassword } from 'firebase/auth';
+import { auth, db } from '../firebase';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
+import { doc, setDoc, getDoc } from 'firebase/firestore';
 
 const Login = () => {
+  const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
 
-  const handleGoogleLogin = async () => {
-    try {
-      await signInWithPopup(auth, googleProvider);
-    } catch (err) {
-      setError('Erro ao entrar com Google');
-    }
-  };
-
-  const handleEmailLogin = async (e) => {
+  const handleAuth = async (e) => {
     e.preventDefault();
+    setError('');
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      if (isLogin) {
+        await signInWithEmailAndPassword(auth, email, password);
+      } else {
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        const user = userCredential.user;
+        
+        // Criar registro pendente no Firestore
+        await setDoc(doc(db, "users", user.uid), {
+          email: user.email,
+          isApproved: false,
+          isAdmin: false,
+          createdAt: new Date().toISOString()
+        });
+        
+        alert("Conta criada! Aguarde a aprovação do administrador.");
+        setIsLogin(true);
+      }
     } catch (err) {
-      setError('E-mail ou senha inválidos');
+      console.error(err);
+      if (err.code === 'auth/user-not-found') setError('Usuário não encontrado.');
+      else if (err.code === 'auth/wrong-password') setError('Senha incorreta.');
+      else if (err.code === 'auth/email-already-in-use') setError('Este e-mail já está em uso.');
+      else if (err.code === 'auth/weak-password') setError('A senha deve ter pelo menos 6 caracteres.');
+      else setError('Erro na autenticação. Verifique seu API Key e se o Firestore está ativo.');
     }
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen">
-      <div className="p-8 bg-white rounded shadow-md w-96">
-        <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">RH Agroserv AI</h2>
-        {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
+    <div className="flex items-center justify-center min-h-screen bg-gray-100 p-4">
+      <div className="p-8 bg-white rounded-xl shadow-lg w-full max-w-md">
+        <h2 className="text-3xl font-extrabold mb-2 text-center text-blue-800">Agroserv AI</h2>
+        <p className="text-gray-600 text-center mb-8">
+          {isLogin ? 'Entre na sua conta' : 'Crie sua conta de administrador'}
+        </p>
         
-        <form onSubmit={handleEmailLogin} className="mb-4">
-          <div className="mb-4">
-            <label className="block text-gray-700 text-sm font-bold mb-2">E-mail</label>
+        {error && (
+          <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-6">
+            <p className="text-red-700 text-sm font-medium">{error}</p>
+          </div>
+        )}
+        
+        <form onSubmit={handleAuth} className="space-y-5">
+          <div>
+            <label className="block text-gray-700 text-sm font-semibold mb-1">E-mail Corporativo</label>
             <input
               type="email"
-              className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              placeholder="exemplo@agroserv.com.br"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
             />
           </div>
-          <div className="mb-6">
-            <label className="block text-gray-700 text-sm font-bold mb-2">Senha</label>
+          <div>
+            <label className="block text-gray-700 text-sm font-semibold mb-1">Senha</label>
             <input
               type="password"
-              className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              placeholder="••••••••"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
@@ -53,27 +79,28 @@ const Login = () => {
           </div>
           <button
             type="submit"
-            className="w-full bg-blue-600 text-white font-bold py-2 px-4 rounded hover:bg-blue-700 transition duration-200"
+            className="w-full bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 shadow-md transform active:scale-[0.98] transition-all"
           >
-            Entrar com E-mail
+            {isLogin ? 'Entrar' : 'Cadastrar'}
           </button>
         </form>
 
-        <div className="relative flex items-center justify-center mb-4">
-          <div className="border-t w-full absolute"></div>
-          <span className="bg-white px-2 text-gray-500 text-sm relative">OU</span>
+        <div className="mt-8 pt-6 border-t border-gray-100 text-center">
+          <p className="text-gray-600">
+            {isLogin ? 'Ainda não tem conta?' : 'Já possui uma conta?'}
+            <button
+              onClick={() => setIsLogin(!isLogin)}
+              className="ml-2 text-blue-600 font-bold hover:underline"
+            >
+              {isLogin ? 'Cadastre-se' : 'Faça Login'}
+            </button>
+          </p>
         </div>
-
-        <button
-          onClick={handleGoogleLogin}
-          className="w-full flex items-center justify-center gap-2 border border-gray-300 text-gray-700 font-semibold py-2 px-4 rounded hover:bg-gray-50 transition duration-200"
-        >
-          <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" className="w-5 h-5" />
-          Entrar com Google
-        </button>
       </div>
     </div>
   );
 };
+
+export default Login;
 
 export default Login;
