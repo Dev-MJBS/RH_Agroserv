@@ -10,7 +10,7 @@ import {
 } from 'recharts';
 import { 
   Upload, Download, Search, LogOut, Plus, ShieldCheck, Check, X,
-  FileText, Users, DollarSign, PieChart as PieChartIcon 
+  FileText, Users, DollarSign, PieChart as PieChartIcon, Sun, Moon 
 } from 'lucide-react';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
@@ -26,6 +26,30 @@ const Dashboard = ({ user, isAdmin }) => {
   const [payrollMapFile, setPayrollMapFile] = useState(null);
   const [conveniaFile, setConveniaFile] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [darkMode, setDarkMode] = useState(false);
+
+  // Efeito para carregar o tema
+  useEffect(() => {
+    const isDark = localStorage.getItem('theme') === 'dark';
+    setDarkMode(isDark);
+    if (isDark) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, []);
+
+  const toggleDarkMode = () => {
+    const newTheme = !darkMode;
+    setDarkMode(newTheme);
+    if (newTheme) {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('theme', 'dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('theme', 'light');
+    }
+  };
 
   useEffect(() => {
     fetchData();
@@ -165,14 +189,21 @@ const Dashboard = ({ user, isAdmin }) => {
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
 
   return (
-    <div className="p-6">
-      <header className="flex justify-between items-center mb-8 bg-white p-4 rounded-lg shadow-sm">
+    <div className="p-6 min-h-screen bg-slate-50 dark:bg-slate-950 transition-colors duration-300">
+      <header className="flex justify-between items-center mb-8 bg-white dark:bg-slate-900 p-4 rounded-lg shadow-sm border border-gray-200 dark:border-slate-800">
         <div className="flex items-center gap-2">
           <FileText className="text-blue-600" />
-          <h1 className="text-xl font-bold text-gray-800">RH Agroserv Financeiro</h1>
-          {isAdmin && <span className="ml-2 px-2 py-0.5 bg-red-100 text-red-700 text-[10px] font-black rounded-full uppercase tracking-wider">Admin</span>}
+          <h1 className="text-xl font-bold text-gray-800 dark:text-white">RH Agroserv Financeiro</h1>
+          {isAdmin && <span className="ml-2 px-2 py-0.5 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 text-[10px] font-black rounded-full uppercase tracking-wider">Admin</span>}
         </div>
         <div className="flex gap-4 items-center">
+          <button
+            onClick={toggleDarkMode}
+            className="p-2 rounded-lg bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-slate-700 transition-colors"
+            title={darkMode ? "Mudar para modo claro" : "Mudar para modo escuro"}
+          >
+            {darkMode ? <Sun size={20} /> : <Moon size={20} />}
+          </button>
           {isAdmin && (
             <button 
               onClick={() => setIsAdminModalOpen(true)}
@@ -215,38 +246,38 @@ const Dashboard = ({ user, isAdmin }) => {
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+        <div className="bg-white dark:bg-slate-900 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-slate-800">
           <div className="flex items-center gap-4">
-            <div className="p-3 bg-blue-50 text-blue-600 rounded-lg"><Users /></div>
+            <div className="p-3 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-lg"><Users /></div>
             <div>
-              <p className="text-gray-500 text-sm">Total Colaboradores</p>
-              <p className="text-2xl font-bold">{data.length}</p>
+              <p className="text-gray-500 dark:text-slate-400 text-sm">Total Colaboradores</p>
+              <p className="text-2xl font-bold dark:text-white">{data.length}</p>
             </div>
           </div>
         </div>
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+        <div className="bg-white dark:bg-slate-900 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-slate-800">
           <div className="flex items-center gap-4">
-            <div className="p-3 bg-green-50 text-green-600 rounded-lg"><DollarSign /></div>
+            <div className="p-3 bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 rounded-lg"><DollarSign /></div>
             <div>
-              <p className="text-gray-500 text-sm">Gasto Total</p>
-              <p className="text-2xl font-bold">R$ {data.reduce((a, b) => a + b.salario_liquido, 0).toLocaleString()}</p>
+              <p className="text-gray-500 dark:text-slate-400 text-sm">Gasto Total</p>
+              <p className="text-2xl font-bold dark:text-white">R$ {data.reduce((a, b) => a + b.salario_liquido, 0).toLocaleString()}</p>
             </div>
           </div>
         </div>
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+        <div className="bg-white dark:bg-slate-900 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-slate-800">
           <div className="flex items-center gap-4">
-            <div className="p-3 bg-purple-50 text-purple-600 rounded-lg"><PieChartIcon /></div>
+            <div className="p-3 bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 rounded-lg"><PieChartIcon /></div>
             <div>
-              <p className="text-gray-500 text-sm">Centros de Custo</p>
-              <p className="text-2xl font-bold">{[...new Set(data.map(d => d.centro_de_custo))].length}</p>
+              <p className="text-gray-500 dark:text-slate-400 text-sm">Centros de Custo</p>
+              <p className="text-2xl font-bold dark:text-white">{[...new Set(data.map(d => d.centro_de_custo))].length}</p>
             </div>
           </div>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 h-80">
-          <h3 className="font-bold mb-4">Distribuição por Centro de Custo</h3>
+        <div className="bg-white dark:bg-slate-900 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-slate-800 h-80">
+          <h3 className="font-bold mb-4 dark:text-white">Distribuição por Centro de Custo</h3>
           <ResponsiveContainer width="100%" height="90%">
             <PieChart>
               <Pie
@@ -265,17 +296,17 @@ const Dashboard = ({ user, isAdmin }) => {
             </PieChart>
           </ResponsiveContainer>
         </div>
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 h-80 overflow-y-auto">
-          <h3 className="font-bold mb-4">Volume Financeiro por Banco e CC</h3>
+        <div className="bg-white dark:bg-slate-900 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-slate-800 h-80 overflow-y-auto">
+          <h3 className="font-bold mb-4 dark:text-white">Volume Financeiro por Banco e CC</h3>
           <div className="space-y-4">
             {Object.entries(bankDataByCC).map(([cc, banks]) => (
-              <div key={cc} className="border-b pb-2 last:border-0">
-                <p className="text-sm font-bold text-gray-700 mb-1 uppercase bg-gray-50 px-2 py-1 rounded">{cc}</p>
+              <div key={cc} className="border-b dark:border-slate-800 pb-2 last:border-0">
+                <p className="text-sm font-bold text-gray-700 dark:text-slate-200 mb-1 uppercase bg-gray-50 dark:bg-slate-800/50 px-2 py-1 rounded">{cc}</p>
                 <div className="grid grid-cols-2 gap-2">
                   {Object.entries(banks).map(([bank, total]) => (
                     <div key={bank} className="flex justify-between text-xs px-2">
-                      <span className="text-gray-600">{bank}:</span>
-                      <span className="font-semibold text-gray-800">R$ {total.toLocaleString()}</span>
+                      <span className="text-gray-600 dark:text-slate-400">{bank}:</span>
+                      <span className="font-semibold text-gray-800 dark:text-slate-200">R$ {total.toLocaleString()}</span>
                     </div>
                   ))}
                 </div>
@@ -285,14 +316,14 @@ const Dashboard = ({ user, isAdmin }) => {
         </div>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100">
-        <div className="p-4 border-b border-gray-100 flex justify-between items-center">
+      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-gray-100 dark:border-slate-800">
+        <div className="p-4 border-b border-gray-100 dark:border-slate-800 flex justify-between items-center">
           <div className="relative">
-            <Search className="absolute left-3 top-2.5 text-gray-400" size={18} />
+            <Search className="absolute left-3 top-2.5 text-gray-400 dark:text-slate-500" size={18} />
             <input 
               type="text" 
               placeholder="Buscar por nome ou centro de custo..." 
-              className="pl-10 pr-4 py-2 border rounded-lg w-80 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="pl-10 pr-4 py-2 border dark:border-slate-700 rounded-lg w-80 bg-white dark:bg-slate-800 text-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
