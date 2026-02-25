@@ -1,0 +1,260 @@
+import fitz  # PyMuPDF
+import google.generativeai as genai
+import json
+import os
+import re
+import pandas as pd
+from typing import List
+from dotenv import load_dotenv
+
+load_dotenv()
+
+genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+
+def extract_text_from_pdf(file_path: str) -> str:
+    doc = fitz.open(file_path)
+    text = ""
+    for page in doc:
+        text += page.get_text()
+    return text
+
+def process_payroll_with_ai(payroll_map_path: str, convenia_path: str, mes_referencia: str):
+    payroll_text = extract_text_from_pdf(payroll_map_path)
+    convenia_text = extract_text_from_pdf(convenia_path)
+    
+    model = genai.GenerativeModel('gemini-1.5-pro')
+    
+    prompt = f"""
+    Você é um especialista em RH e Contabilidade. 
+    Recebi dois documentos para o mês {mes_referencia}:
+    1. Mapa da Folha (contém os valores pagos)
+    2. Dados do Convenia (contém dados cadastrais e possivelmente o centro de custo)
+    
+    Sua tarefa é cruzar os dados e extrair uma lista estruturada de pagamentos.
+    Use o Convenia para garantir o Centro de Custo correto de cada funcionário.
+    Use o Mapa da Folha para extrair o Salário Líquido.
+    
+    Retorne APENAS um JSON (lista de objetos):
+    [
+      {{
+        "nome_funcionario": "Nome Completo",
+        "cpf": "000.000.000-00",
+        "salario_liquido": 0.0,
+        "centro_de_custo": "Armazém" | "Limpeza" | "Transporte" | "Administrativo",
+        "dados_bancarios": {{ "banco": "Nome", "agencia": "0000", "conta": "00000-0" }},
+        "mes_referencia": "{mes_referencia}"
+      }}
+    ]
+    
+    TEXTO DO MAPA DA FOLHA:
+    {payroll_text[:10000]}
+    
+    TEXTO DO CONVENIA:
+    {convenia_text[:10000]}
+    """
+    
+    response = model.generate_content(prompt)
+    try:
+        json_text = response.text.strip()
+        if json_text.startswith("```json"):
+            json_text = json_text[7:-3].strip()
+        elif json_text.startswith("```"):
+            json_text = json_text[3:-3].strip()
+        
+        return json.loads(json_text)
+    except Exception as e:
+        print(f"Error parsing AI response: {e}")
+        return []
+
+def parse_payroll_map(pdf_path: str):
+    """
+    Extrai dados financeiros de um PDF de 'Mapa da Folha' usando PyMuPDF e Regex.
+    """
+    doc = fitz.open(pdf_path)
+    employees = []
+    
+    # Regex Patterns
+    # Captura Código e Nome: ex: 1347 ADAIR CAMILO DE LIMA
+    re_name = re.compile(r'^(\d{1,6})\s+([A-Z\s]+)$')
+    # CPF: 000.000.000-00
+    re_cpf = re.compile(r'CPF:\s*(\d{3}\.\d{3}\.\d{3}-\d{2})')
+    # CC: 12
+    re_cc = re.compile(r'CC:\s*(\d+)')
+    
+    # Valores financeiros
+    # Líquido: 1.234,56 | Proventos: 2.000,00 | Descontos: 765,44
+    re_liquido = re.compile(r'Líquido:\s*([\d\.]+,\d{2})')
+    re_proventos = re.compile(r'Proventos:\s*([\d\.]+,\d{2})')
+    re_descontos = re.compile(r'Descontos:\s*([\d\.]+,\d{2})')
+    re_base_fgts = re.compile(r'Base FGTS:\s*([\d\.]+,\d{2})')
+    re_valor_fgts = re.compile(r'Valor FGTS:\s*([\d\.]+,\d{2})')
+
+    # Regex para dados bancários no Convenia/Payroll
+    # Ex: Banco: ITAU | Agencia: 1234 | Conta: 12345-6
+    re_banco = re.compile(r'Banco:\s*([A-Z\s]+)', re.IGNORECASE)
+    re_agencia = re.compile(r'Agencia:\s*(\d+)')
+    re_conta = re.compile(r'Conta:\s*([\d-]+)')
+
+    def clean_currency(value_str):
+        if not value_str: return 0.0
+        # Remove ponto de milhar e troca vírgula por ponto decimal
+        return float(value_str.replace('.', '').replace(',', '.'))
+
+    current_employee = {}
+    
+    for page in doc:
+        text_lines = page.get_text("text").splitlines()
+        
+        for line in text_lines:
+            line = line.strip()
+            
+            # Identifica início de bloco de funcionário (Código + Nome)
+            name_match = re_name.match(line)
+            if name_match:
+                # Se já tínhamos um funcionário sendo processado, salva antes de iniciar novo
+                if current_employee and 'nome' in current_employee:
+                    employees.append(current_employee)
+                current_employee = {'nome': name_match.group(2).strip()}
+                continue
+            
+            # Captura CPF
+            cpf_match = re_cpf.search(line)
+            if cpf_match:
+                current_employee['cpf'] = cpf_match.group(1)
+                continue
+            
+            # Captura Centro de Custo (CC)
+            cc_match = re_cc.search(line)
+            if cc_match:
+                current_employee['centro_custo'] = cc_match.group(1)
+                continue
+            
+            # Captura valores financeiros
+            liquido_match = re_liquido.search(line)
+            if liquido_match:
+                current_employee['salario_liquido'] = clean_currency(liquido_match.group(1))
+                continue
+            
+            proventos_match = re_proventos.search(line)
+            if proventos_match:
+                current_employee['salario_bruto'] = clean_currency(proventos_match.group(1))
+                continue
+            
+            descontos_match = re_descontos.search(line)
+            if descontos_match:
+                current_employee['total_descontos'] = clean_currency(descontos_match.group(1))
+                continue
+            
+            # Captura Dados Bancários (se existirem na linha ou bloco)
+            banco_match = re_banco.search(line)
+            if banco_match:
+                current_employee['banco'] = banco_match.group(1).strip()
+            
+            ag_match = re_agencia.search(line)
+            if ag_match:
+                current_employee['agencia'] = ag_match.group(1)
+                
+            cta_match = re_conta.search(line)
+            if cta_match:
+                current_employee['conta'] = cta_match.group(1)
+        
+        # Adiciona o último funcionário processado na página
+        if current_employee and 'nome' in current_employee:
+            employees.append(current_employee)
+            current_employee = {}
+    
+    return pd.DataFrame(employees)
+
+def parse_convenia_pdf(pdf_path: str):
+    """
+    Extrai dados do PDF do Convenia.
+    """
+    doc = fitz.open(pdf_path)
+    employees = []
+    
+    # Regex Patterns
+    re_name = re.compile(r'Nome:\s*([A-Z\s]+)')
+    re_cpf = re.compile(r'CPF:\s*(\d{3}\.\d{3}\.\d{3}-\d{2})')
+    re_cc = re.compile(r'Centro de Custo:\s*([A-Z\s]+)')
+    
+    # Regex para dados bancários
+    re_banco = re.compile(r'Banco:\s*([A-Z\s]+)', re.IGNORECASE)
+    re_agencia = re.compile(r'Agencia:\s*(\d+)')
+    re_conta = re.compile(r'Conta:\s*([\d-]+)')
+    
+    for page in doc:
+        text_lines = page.get_text("text").splitlines()
+        
+        current_employee = {}
+        
+        for line in text_lines:
+            line = line.strip()
+            
+            # Captura Nome
+            name_match = re_name.search(line)
+            if name_match:
+                current_employee['nome'] = name_match.group(1)
+            
+            # Captura CPF
+            cpf_match = re_cpf.search(line)
+            if cpf_match:
+                current_employee['cpf'] = cpf_match.group(1)
+            
+            # Captura Centro de Custo
+            cc_match = re_cc.search(line)
+            if cc_match:
+                current_employee['centro_custo'] = cc_match.group(1)
+            
+            # Captura Dados Bancários
+            banco_match = re_banco.search(line)
+            if banco_match:
+                current_employee['banco'] = banco_match.group(1).strip()
+            
+            ag_match = re_agencia.search(line)
+            if ag_match:
+                current_employee['agencia'] = ag_match.group(1)
+                
+            cta_match = re_conta.search(line)
+            if cta_match:
+                current_employee['conta'] = cta_match.group(1)
+        
+        if current_employee:
+            employees.append(current_employee)
+    
+    return pd.DataFrame(employees)
+
+def generate_payroll_report(payroll_df: pd.DataFrame, convenia_df: pd.DataFrame, output_path: str):
+    """
+    Gera um relatório unificado da folha de pagamento.
+    """
+    # Mescla os DataFrames com base no CPF
+    report_df = pd.merge(payroll_df, convenia_df, on='cpf', suffixes=('_payroll', '_convenia'))
+    
+    # Ordena as colunas conforme necessidade
+    columns_order = ['nome', 'cpf', 'centro_custo', 'salario_bruto', 'total_descontos', 'salario_liquido', 'banco']
+    report_df = report_df[columns_order]
+    
+    # Exporta para Excel
+    report_df.to_excel(output_path, index=False)
+
+# Exemplo de uso
+if __name__ == "__main__":
+    # Caminhos dos arquivos (exemplo)
+    payroll_map_path = "caminho/para/mapa_da_folha.pdf"
+    convenia_path = "caminho/para/convenia.pdf"
+    output_path = "caminho/para/relatorio_folha_pagamento.xlsx"
+    mes_referencia = "Janeiro/2023"
+    
+    # Processamento e geração do relatório
+    payroll_df = parse_payroll_map(payroll_map_path)
+    convenia_df = parse_convenia_pdf(convenia_path)
+    
+    # Usar AI para preencher dados faltantes e corrigir informações
+    ai_processed_data = process_payroll_with_ai(payroll_map_path, convenia_path, mes_referencia)
+    ai_df = pd.DataFrame(ai_processed_data)
+    
+    # Concatenar dados da AI com os dados originais
+    final_payroll_df = pd.concat([payroll_df, ai_df]).drop_duplicates(subset='cpf', keep='last')
+    
+    # Gerar relatório final
+    generate_payroll_report(final_payroll_df, convenia_df, output_path)
