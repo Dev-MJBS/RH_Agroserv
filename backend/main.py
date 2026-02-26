@@ -4,6 +4,17 @@ from sqlalchemy.orm import Session
 from typing import List
 import os
 import shutil
+import sys
+import logging
+
+# Configuração de Logs básica para Railway ver o que está acontecendo
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+logger.info(">>> ERP IA-Agroserv: Iniciando processo de boot...")
+logger.info(f">>> Python Version: {sys.version}")
+logger.info(f">>> Current Directory: {os.getcwd()}")
+logger.info(f">>> PORT Environment Var: {os.getenv('PORT', 'NOT SET (default 8000)')}")
 
 import models, schemas, database, pdf_processor, firebase_auth
 from database import engine, get_db
@@ -11,7 +22,15 @@ from employee_manager import EmployeeManager
 
 app = FastAPI()
 
-# Configuração completa de CORS para aceitar qualquer origem sem falha de preflight
+# Middleware de logging para cada requisição para ajudar no debug do Railway
+@app.middleware("http")
+async def log_requests(request, call_next):
+    logger.info(f"Requisição recebida: {request.method} {request.url.path}")
+    response = await call_next(request)
+    logger.info(f"Resposta enviada: {response.status_code}")
+    return response
+
+# Configuração completa de CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],

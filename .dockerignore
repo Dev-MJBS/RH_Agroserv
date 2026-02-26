@@ -1,0 +1,13 @@
+.git
+.venv
+__pycache__
+*.db
+uploads/
+backend.log
+backend/.venv
+backend/__pycache__
+frontend/
+node_modules/
+.env.netlify
+.env
+serviceAccountKey.json

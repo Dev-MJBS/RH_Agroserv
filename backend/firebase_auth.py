@@ -17,12 +17,20 @@ if not firebase_admin._apps:
     if service_json:
         try:
             import json
-            service_account_info = json.loads(service_json)
+            # Sanity check: se for um path em vez de JSON, tenta ler o arquivo
+            if service_json.strip().startswith("{"):
+                service_account_info = json.loads(service_json)
+                print("Firebase: Inicializado via JSON string da variável de ambiente.")
+            else:
+                with open(service_json, 'r') as f:
+                    service_account_info = json.load(f)
+                print(f"Firebase: Inicializado via arquivo no path: {service_json}")
+                
             cred = credentials.Certificate(service_account_info)
             firebase_admin.initialize_app(cred)
-            print("Firebase Admin SDK initialized using environment variable JSON.")
         except Exception as e:
-            print(f"Error parsing FIREBASE_SERVICE_ACCOUNT_JSON env var: {e}")
+            print(f"CRITICAL: Erro ao carregar credenciais do Firebase: {e}")
+            # Não vamos crashar aqui, deixamos as rotas falharem se o token não for validável
     else:
         # 2. Se não houver variável, tenta descobrir o caminho do arquivo físico (Para Local)
         base_dir = os.path.dirname(os.path.abspath(__file__))
