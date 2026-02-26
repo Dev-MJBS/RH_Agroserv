@@ -27,18 +27,37 @@ const EmployeesModule = ({ user }) => {
   const fetchEmployees = async () => {
     setLoading(true);
     try {
-      const token = await user.getIdToken();
+      if (!user) throw new Error("AUTH_REQUIRED");
+      const token = await user.getIdToken().catch(e => {
+        console.error("Firebase auth error:", e);
+        throw new Error("AUTH_TOKEN_FAILED");
+      });
+
       const response = await axios.get(`${API_URL}/employees`, {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}` },
+        timeout: 5000 // Adiciona timeout para falhar rápido se offline
       });
       setEmployees(response.data);
     } catch (err) {
       console.error("Erro ao buscar funcionários:", err);
-      const isResponseError = err.response;
-      const errorMessage = isResponseError 
-        ? `Falha ao carregar (${err.response.status}): Tente logar novamente.` 
-        : "O servidor parece estar offline.";
-      alert(errorMessage);
+      
+      let message = "Erro inesperado.";
+      
+      if (err.message === "AUTH_REQUIRED") {
+        message = "Usuário não autenticado. Faça login novamente.";
+      } else if (err.message === "AUTH_TOKEN_FAILED") {
+        message = "Sua sessão expirou ou o domínio não está autorizado no Firebase Console.";
+      } else if (err.response) {
+        // Erro do backend (404, 500, etc)
+        message = `Falha no Servidor (${err.response.status}): ${err.response.data?.detail || "Erro desconhecido"}`;
+      } else if (err.request) {
+        // Sem resposta (CORS ou IP bloqueado)
+        message = `Servidor Offline/Bloqueado: Verifique se o Backend está rodando e se o domínio está em Authorized Domains.`;
+      } else {
+        message = err.message;
+      }
+      
+      alert(message);
     } finally {
       setLoading(false);
     }
@@ -63,7 +82,8 @@ const EmployeesModule = ({ user }) => {
         headers: { 
           Authorization: `Bearer ${token}`,
           'Content-Type': 'multipart/form-data'
-        }
+        },
+        timeout: 30000 // Imports podem demorar
       });
       
       const result = response.data;
@@ -81,13 +101,16 @@ const EmployeesModule = ({ user }) => {
         console.error("Erro na importação:", result);
       }
     } catch (err) {
-      console.error(err);
-      const isResponseError = err.response;
-      const errorMessage = isResponseError 
-        ? `Erro do Servidor (${err.response.status}): ${err.response.data?.detail || err.message}` 
-        : `Erro de Conexão: O servidor está offline ou bloqueado por CORS.`;
+      console.error("Erro na importação:", err);
+      let message = "Erro na comunicação.";
       
-      alert(errorMessage);
+      if (err.response) {
+        message = `Erro do Servidor (${err.response.status}): ${err.response.data?.detail || "Falha no backend"}`;
+      } else if (err.request) {
+        message = "Sem resposta do servidor (Offline/Timeout/CORS).";
+      }
+      
+      alert(message);
     } finally {
       setLoading(false);
     }
