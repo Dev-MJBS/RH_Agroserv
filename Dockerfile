@@ -35,5 +35,6 @@ RUN mkdir -p /app/uploads && chmod 777 /app/uploads
 # Expõe a porta que o FastAPI usa (Railway usa a variável de ambiente $PORT)
 EXPOSE 8000
 
-# Usamos o formato shell-script para garantir que o Railway consiga injetar o $PORT
-ENTRYPOINT ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000} --proxy-headers"]
+# Usamos o comando direto do Python para carregar o main.py
+# O próprio main.py já lê a porta da variável $PORT corretamente em modo estável.
+CMD ["python", "main.py"]
