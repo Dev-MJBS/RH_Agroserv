@@ -49,6 +49,7 @@ const EmployeesModule = ({ user }) => {
     if (!importFile) return;
 
     setLoading(true);
+    setImportResult(null); // Limpa resultados anteriores
     const formData = new FormData();
     formData.append('file', importFile);
 
@@ -60,12 +61,24 @@ const EmployeesModule = ({ user }) => {
           'Content-Type': 'multipart/form-data'
         }
       });
-      setImportResult(response.data);
-      alert(`Importação concluída! ${response.data.imported} registros processados.`);
-      setActiveTab('list');
+      
+      const result = response.data;
+      setImportResult(result);
+
+      if (result.status === 'success') {
+        if (result.code === 'PARTIAL_SUCCESS') {
+          alert(`Importação concluída com avisos: ${result.imported} sucessos, ${result.row_errors?.length || 0} erros.`);
+        } else {
+          alert(`Sucesso! ${result.imported} funcionários importados.`);
+          setActiveTab('list');
+        }
+      } else {
+        // Erro identificado pelo backend com código
+        console.error("Erro na importação:", result);
+      }
     } catch (err) {
       console.error(err);
-      alert("Erro na importação. Verifique o formato do arquivo.");
+      alert("Erro crítico na comunicação com o servidor.");
     } finally {
       setLoading(false);
     }
@@ -273,6 +286,54 @@ const EmployeesModule = ({ user }) => {
             {loading ? <LucideLoader2 className="animate-spin" /> : <Download size={20} />}
             {loading ? "Processando Planilha..." : "Iniciar Importação"}
           </button>
+
+          {/* Área de diagnóstico de erros */}
+          {importResult && importResult.status === 'error' && (
+            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-6 rounded-2xl animate-in fade-in zoom-in duration-300">
+              <div className="flex items-center gap-3 text-red-600 dark:text-red-400 font-bold mb-2">
+                <AlertCircle size={24} />
+                <span>Erro na Importação: {importResult.code}</span>
+              </div>
+              <p className="text-sm text-red-700 dark:text-red-300 mb-4">{importResult.message}</p>
+              
+              {importResult.available_columns && (
+                <div className="mt-2 text-xs">
+                  <span className="font-bold">Colunas encontradas no seu arquivo:</span>
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {importResult.available_columns.map(col => (
+                      <span key={col} className="bg-red-100 dark:bg-red-900/40 px-2 py-0.5 rounded italic">"{col}"</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {importResult.row_errors && importResult.row_errors.length > 0 && (
+                <div className="mt-4">
+                  <span className="text-xs font-bold block mb-1">Detalhes dos erros (Top 5):</span>
+                  <ul className="text-xs space-y-1">
+                    {importResult.row_errors.slice(0, 5).map((err, i) => (
+                      <li key={i} className="text-red-500">• {err.row}: {err.error}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
+
+          {importResult && importResult.status === 'success' && importResult.code === 'PARTIAL_SUCCESS' && (
+            <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 p-6 rounded-2xl">
+              <div className="flex items-center gap-3 text-yellow-600 dark:text-yellow-400 font-bold mb-2">
+                <AlertCircle size={24} />
+                <span>Importação Parcial (Sucesso: {importResult.imported})</span>
+              </div>
+              <p className="text-sm text-yellow-700 dark:text-yellow-300">Algumas linhas continham erros e foram puladas:</p>
+              <ul className="mt-2 text-xs space-y-1">
+                {importResult.row_errors.slice(0, 5).map((err, i) => (
+                  <li key={i} className="text-yellow-600">• {err.row}: {err.error}</li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           <div className="bg-blue-50 dark:bg-slate-900 border border-blue-100 dark:border-slate-800 p-6 rounded-2xl">
             <h4 className="flex items-center gap-2 font-bold mb-4 text-blue-800 dark:text-blue-300">

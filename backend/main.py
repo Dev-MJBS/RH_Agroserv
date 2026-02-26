@@ -129,9 +129,6 @@ async def import_employees(
     if os.path.exists(file_path):
         os.remove(file_path)
         
-    if result.get("status") == "error":
-        raise HTTPException(status_code=400, detail=result.get("message"))
-        
     return result
 
 @app.get("/employees")

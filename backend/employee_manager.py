@@ -74,38 +74,66 @@ class EmployeeManager:
     def import_from_spreadsheet(self, file_path: str, tenant_id: str) -> Dict[str, Any]:
         """
         Lê arquivos .csv ou .xlsx e importa para o Firestore com isolamento por tenant.
-        Implementa lógica de mapeamento flexível e tratamento de agência/conta como string.
+        Retorna códigos de erro detalhados para facilitar o diagnóstico.
         """
         try:
             # Carregamento do arquivo
-            if file_path.endswith('.csv'):
-                df = pd.read_csv(file_path, dtype=str) # Lê tudo como string para preservar zeros à esquerda
-            elif file_path.endswith(('.xlsx', '.xls')):
-                df = pd.read_excel(file_path, dtype=str)
-            else:
-                raise ValueError("Formato de arquivo inválido. Use .csv ou .xlsx.")
+            try:
+                if file_path.endswith('.csv'):
+                    df = pd.read_csv(file_path, dtype=str)
+                elif file_path.endswith(('.xlsx', '.xls')):
+                    df = pd.read_excel(file_path, dtype=str)
+                else:
+                    return {
+                        "status": "error", 
+                        "code": "ERR_INVALID_FORMAT",
+                        "message": "Formato de arquivo não suportado. Use .csv ou .xlsx."
+                    }
+            except Exception as e:
+                return {
+                    "status": "error", 
+                    "code": "ERR_FILE_READ",
+                    "message": f"Erro ao ler o arquivo: {str(e)}"
+                }
+
+            if df.empty:
+                return {
+                    "status": "error", 
+                    "code": "ERR_EMPTY_FILE",
+                    "message": "A planilha está vazia."
+                }
 
             found_mapping = self._map_columns(df.columns.tolist())
             
             # Validação mínima de campos obrigatórios
-            if 'full_name' not in found_mapping or 'cpf' not in found_mapping:
-                raise KeyError("Não foi possível identificar as colunas de 'Nome' e 'CPF' na planilha.")
+            missing = []
+            if 'full_name' not in found_mapping: missing.append("Nome")
+            if 'cpf' not in found_mapping: missing.append("CPF")
+            
+            if missing:
+                return {
+                    "status": "error", 
+                    "code": "ERR_MAPPING_FAILED",
+                    "message": f"Não encontramos as colunas: {', '.join(missing)}",
+                    "available_columns": df.columns.tolist()
+                }
 
             batch = self.db.batch()
             success_count = 0
-            errors = []
+            row_errors = []
 
             for index, row in df.iterrows():
+                row_id = f"Linha {index + 2}"
                 try:
-                    raw_cpf = row[found_mapping['cpf']]
+                    raw_cpf = row.get(found_mapping['cpf'])
+                    if pd.isna(raw_cpf):
+                        raise ValueError("CPF Ausente")
+                        
                     cpf = self._sanitize_cpf(raw_cpf)
-                    
-                    # Prepara os dados conforme o schema solicitado
-                    employee_id = cpf
-                    doc_ref = self.db.collection(self.collection_name).document(employee_id)
+                    doc_ref = self.db.collection(self.collection_name).document(cpf)
                     
                     data = {
-                        "full_name": str(row[found_mapping['full_name']]).strip().upper(),
+                        "full_name": str(row.get(found_mapping['full_name'], "")).strip().upper(),
                         "cpf": cpf,
                         "email": str(row.get(found_mapping.get('email'), "")).lower().strip(),
                         "tenant_id": tenant_id,
@@ -123,23 +151,29 @@ class EmployeeManager:
                     batch.set(doc_ref, data, merge=True)
                     success_count += 1
 
-                    # Firestore batch limit is 500
                     if success_count % 450 == 0:
                         batch.commit()
                         batch = self.db.batch()
 
                 except Exception as e:
-                    errors.append(f"Linha {index + 2}: {str(e)}")
+                    row_errors.append({"row": row_id, "error": str(e)})
 
             batch.commit()
+            
             return {
-                "status": "success", 
-                "imported": success_count, 
-                "errors": errors if errors else "None"
+                "status": "success" if success_count > 0 else "error",
+                "code": "PARTIAL_SUCCESS" if row_errors and success_count > 0 else "SUCCESS",
+                "imported": success_count,
+                "row_errors": row_errors,
+                "total_rows_processed": len(df)
             }
 
         except Exception as e:
-            return {"status": "error", "message": str(e)}
+            return {
+                "status": "error", 
+                "code": "ERR_INTERNAL",
+                "message": f"Erro interno no processamento: {str(e)}"
+            }
 
     def update_status(self, employee_id: str, tenant_id: str, new_status: str) -> bool:
         """
