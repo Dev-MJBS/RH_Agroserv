@@ -21,8 +21,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copia o restante do código do backend
 COPY . .
 
-# Expõe a porta que o FastAPI usa
+# Expõe a porta que o FastAPI usa (Railway usa a variável de ambiente $PORT)
 EXPOSE 8000
 
-# Comando para rodar a aplicação usando uvicorn
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Comando para rodar a aplicação usando uvicorn, amarrando à variável de ambiente PORT (padrão 8000)
+CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}"]

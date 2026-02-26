@@ -31,25 +31,34 @@ class EmployeeManager:
     }
 
     def __init__(self, db: Any = None):
-        """Inicializa o cliente Firestore."""
-        if db:
-            self.db = db
-            # Em firestore.Client(), o timestamp está em firestore.SERVER_TIMESTAMP
-            # Em firebase_admin.firestore.client(), o timestamp está disponível via módulo
-            from google.cloud import firestore
-            self.timestamp_fn = firestore.SERVER_TIMESTAMP
-        else:
-            try:
-                from firebase_admin import firestore as admin_firestore
-                self.db = admin_firestore.client()
-                # O admin_firestore.SERVER_TIMESTAMP costuma ser o mesmo objeto,
-                # mas vamos garantir o uso da referência correta.
-                self.timestamp_fn = admin_firestore.SERVER_TIMESTAMP
-            except Exception:
-                from google.cloud import firestore
-                self.db = firestore.Client()
-                self.timestamp_fn = firestore.SERVER_TIMESTAMP
+        """Inicializa o cliente Firestore de forma lazy."""
+        self._db = db
         self.collection_name = "employees"
+        self.timestamp_fn = None
+        
+    @property
+    def db(self):
+        """Lazy loader para o cliente Firestore para evitar crash se não inicializado."""
+        if self._db is not None:
+            return self._db
+        
+        try:
+            import firebase_admin
+            from firebase_admin import firestore as admin_firestore
+            # Se já inicializamos o app no firebase_auth.py, ou se ele já estiver ativo
+            if not firebase_admin._apps:
+                # O ideal é que o firebase_auth.py tenha inicializado.
+                # Se não, tentamos inicializar aqui como fallback.
+                pass 
+                
+            self._db = admin_firestore.client()
+            self.timestamp_fn = admin_firestore.SERVER_TIMESTAMP
+            return self._db
+        except Exception as e:
+            # Em vez de crashar o servidor, vamos logar o erro.
+            # As requisições que dependerem do DB vão falhar depois com erro 500.
+            print(f"CRITICAL: Failed to initialize Firestore: {e}")
+            raise RuntimeError("Serviço de Banco de Dados (Firestore) não está configurado corretamente no Railway.")
 
     def _sanitize_cpf(self, cpf: Any) -> str:
         """Remove caracteres não numéricos e valida o CPF (11 dígitos)."""
