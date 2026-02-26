@@ -9,3 +9,6 @@ pymupdf
 google-generativeai
 python-dotenv
 pandas
+openpyxl
+google-cloud-firestore
+firebase-admin

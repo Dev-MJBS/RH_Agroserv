@@ -14,18 +14,31 @@ class EmployeeManager:
     
     # Mapeamento flexível de colunas para suportar diferentes formatos de planilhas legadas
     COLUMN_MAPPING = {
-        'full_name': ['NOME', 'NOME COMPLETO', 'FUNCIONARIO', 'COLABORADOR', 'NOME DO FUNCIONARIO'],
-        'cpf': ['CPF', 'DOCUMENTO', 'IDENTIFICACAO'],
-        'email': ['EMAIL', 'E-MAIL', 'CONTRETO'],
-        'bank_code': ['BANCO', 'CODIGO BANCO', 'BANK'],
-        'agency': ['AGENCIA', 'AG', 'AGENCIA BANCARIA'],
-        'account_number': ['CONTA', 'NUMERO DA CONTA', 'CONTA CORRENTE'],
-        'pix_key': ['PIX', 'CHAVE PIX', 'PIX KEY']
+        'full_name': [
+            'NOME', 'NOME COMPLETO', 'FUNCIONARIO', 'FUNCIONÁRIO', 'COLABORADOR', 
+            'NOME DO FUNCIONARIO', 'NOME DO FUNCIONÁRIO'
+        ],
+        'cpf': ['CPF', 'DOCUMENTO', 'IDENTIFICACAO', 'IDENTIFICAÇÃO', 'ID'],
+        'email': ['EMAIL', 'E-MAIL', 'CONTRETO', 'CORREIO ELETRONICO'],
+        'bank_code': ['BANCO', 'CODIGO BANCO', 'CÓDIGO BANCO', 'BANK'],
+        'agency': ['AGENCIA', 'AGÊNCIA', 'AG', 'AGENCIA BANCARIA', 'AGÊNCIA BANCÁRIA'],
+        'account_number': ['CONTA', 'NUMERO DA CONTA', 'NÚMERO DA CONTA', 'CONTA CORRENTE', 'CONTA_CORRENTE'],
+        'pix_key': ['PIX', 'CHAVE PIX', 'PIX KEY', 'CHAVE_PIX']
     }
 
-    def __init__(self, db: Optional[firestore.Client] = None):
+    def __init__(self, db: Any = None):
         """Inicializa o cliente Firestore."""
-        self.db = db or firestore.Client()
+        if db:
+            self.db = db
+        else:
+            # Tenta pegar o cliente do firebase_admin (já inicializado no auth)
+            try:
+                from firebase_admin import firestore as admin_firestore
+                self.db = admin_firestore.client()
+            except Exception:
+                # Fallback para o cliente padrão se necessário
+                from google.cloud import firestore
+                self.db = firestore.Client()
         self.collection_name = "employees"
 
     def _sanitize_cpf(self, cpf: Any) -> str:
@@ -42,13 +55,18 @@ class EmployeeManager:
     def _map_columns(self, df_columns: List[str]) -> Dict[str, str]:
         """Identifica quais colunas da planilha correspondem aos nossos campos internos."""
         mapping = {}
-        df_cols_upper = [str(c).upper().strip() for c in df_columns]
+        # Normalização: Remove acentos, bota em UPPER e dá strip
+        import unicodedata
+        def normalize(txt):
+            return "".join(c for c in unicodedata.normalize('NFD', str(txt)) if unicodedata.category(c) != 'Mn').upper().strip()
+
+        df_cols_normalized = [normalize(c) for c in df_columns]
         
         for internal_field, variations in self.COLUMN_MAPPING.items():
             for var in variations:
-                if var in df_cols_upper:
-                    # Encontra o nome original da coluna (case-sensitive do DF original)
-                    idx = df_cols_upper.index(var)
+                var_normalized = normalize(var)
+                if var_normalized in df_cols_normalized:
+                    idx = df_cols_normalized.index(var_normalized)
                     mapping[internal_field] = df_columns[idx]
                     break
         return mapping
