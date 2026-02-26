@@ -277,6 +277,3 @@ const PaymentsModule = ({ user, isAdmin }) => {
 };
 
 export default PaymentsModule;
-
-
-export default PaymentsModule;
