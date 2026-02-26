@@ -5,6 +5,7 @@ from typing import List
 import os
 import shutil
 import sys
+from contextlib import asynccontextmanager
 import logging
 
 # Configuração de Logs básica
@@ -17,7 +18,20 @@ import models, schemas, database, pdf_processor, firebase_auth
 from database import engine, get_db
 from employee_manager import EmployeeManager
 
-app = FastAPI()
+# Inicializa o gerenciador de funcionários
+employee_mgr = EmployeeManager()
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Lifespan gerenciador: inicializa o banco de dados ao iniciar."""
+    try:
+        models.Base.metadata.create_all(bind=engine)
+        logger.info("✅ Banco de Dados SQLite inicializado.")
+    except Exception as e:
+        logger.error(f"❌ Erro ao inicializar BD: {e}")
+    yield
+
+app = FastAPI(lifespan=lifespan)
 
 # Middleware de logging
 @app.middleware("http")
@@ -35,21 +49,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Inicializa o gerenciador de funcionários
-employee_mgr = EmployeeManager()
-
-@app.on_event("startup")
-def startup_event():
-    """Inicializa o banco de dados e outras configurações ao subir."""
-    try:
-        models.Base.metadata.create_all(bind=engine)
-        logger.info("✅ Banco de Dados SQLite inicializado.")
-    except Exception as e:
-        logger.error(f"❌ Erro ao inicializar BD: {e}")
-
 @app.get("/")
 async def root():
-    return {"status": "online", "message": "ERP IA-Agroserv", "version": "1.2.0"}
+    return {"status": "online", "message": "ERP IA-Agroserv", "version": "1.2.2"}
 
 @app.get("/health")
 def health_check():
