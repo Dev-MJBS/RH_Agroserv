@@ -52,7 +52,18 @@ const EmployeesModule = ({ user }) => {
         message = `Falha no Servidor (${err.response.status}): ${err.response.data?.detail || "Erro desconhecido"}`;
       } else if (err.request) {
         // Sem resposta (CORS ou IP bloqueado)
-        message = `Servidor Offline/Bloqueado: Verifique se o Backend está rodando e se o domínio está em Authorized Domains.`;
+        const isHTTPS = window.location.protocol === 'https:';
+        const isLocalAPI = API_URL.includes('localhost') || API_URL.includes('127.0.0.1');
+
+        if (isHTTPS && isLocalAPI) {
+          message = `ERRO DE SEGURANÇA (Mixed Content): Você está rodando o Frontend em HTTPS (Netlify) mas tentando acessar o Backend em HTTP (Local). 
+          
+Para corrigir:
+1. Use o Frontend local (http://localhost:3000)
+2. OU suba o Backend no Railway e atualize a URL no Netlify.`;
+        } else {
+          message = `Servidor Offline/Bloqueado: Verifique se o Backend está rodando e se o domínio está em Authorized Domains no Firebase.`;
+        }
       } else {
         message = err.message;
       }

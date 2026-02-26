@@ -61,7 +61,26 @@ const PaymentsModule = ({ user, isAdmin }) => {
       alert('Dados processados com sucesso!');
     } catch (err) {
       console.error(err);
-      alert('Erro ao processar arquivos. Verifique se o backend está ativo.');
+      
+      let message = "Erro ao processar arquivos.";
+      if (err.request) {
+        const isHTTPS = window.location.protocol === 'https:';
+        const isLocalAPI = API_URL.includes('localhost') || API_URL.includes('127.0.0.1');
+
+        if (isHTTPS && isLocalAPI) {
+          message = `ERRO DE SEGURANÇA (Mixed Content): Você está rodando o Frontend em HTTPS (Netlify) mas tentando acessar o Backend em HTTP (Local). 
+          
+Para corrigir:
+1. Use o Frontend local (http://localhost:3000)
+2. OU suba o Backend no Railway e atualize a URL no Netlify.`;
+        } else {
+          message = "Sem resposta do servidor. Verifique se o backend está ativo e configurado corretamente.";
+        }
+      } else if (err.response) {
+         message = `Erro do Servidor (${err.response.status}): ${err.response.data?.detail || "Falha no processamento"}`;
+      }
+      
+      alert(message);
     } finally {
       setLoading(false);
     }
