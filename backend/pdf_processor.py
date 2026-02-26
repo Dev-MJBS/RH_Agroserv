@@ -11,6 +11,67 @@ load_dotenv()
 
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 
+def analyze_spreadsheet_with_ai(file_path: str):
+    """
+    Usa IA para analisar uma planilha com múltiplas abas e identificar onde estão os dados de funcionários.
+    """
+    try:
+        if file_path.endswith('.csv'):
+            df = pd.read_csv(file_path, nrows=10).to_string()
+            sheets_info = f"Arquivo CSV (aba única):\n{df}"
+        else:
+            xl = pd.ExcelFile(file_path)
+            sheets_summary = []
+            for sheet_name in xl.sheet_names:
+                # Lê um pouco mais de linhas para capturar cabeçalhos escondidos
+                df_temp = pd.read_excel(file_path, sheet_name=sheet_name, nrows=15)
+                # Amostra das primeiras 15 linhas como texto
+                sample_text = df_temp.to_string(index=False)
+                summary = f"Aba: '{sheet_name}'\nColunas Lidas (podem estar erradas se houver lixo no topo): {df_temp.columns.tolist()}\nConteúdo da Amostra:\n{sample_text}"
+                sheets_summary.append(summary)
+            sheets_info = "\n\n---\n\n".join(sheets_summary)
+
+        model = genai.GenerativeModel('gemini-1.5-flash')
+        
+        prompt = f"""
+        Analise a estrutura desta planilha abaixo que contém várias abas. 
+        Sua tarefa é identificar QUAL ABA contém os dados cadastrais de funcionários (Nomes, CPFs e Dados Bancários).
+
+        IMPORTANTE: O arquivo pode ter títulos ou linhas vazias no topo antes dos cabeçalhos reais. Olhe para a 'Amostra' para identificar os nomes reais das colunas de dados.
+
+        INFORMAÇÕES DAS ABAS:
+        {sheets_info}
+
+        Responda OBRIGATORIAMENTE em formato JSON com esta estrutura:
+        {{
+          "recommended_sheet": "NOME_DA_ABA_ESCOLHIDA",
+          "column_mapping": {{
+            "full_name": "NOME_EXATO_DA_COLUNA_DE_NOME_COMO_APARECE_NA_ AMOSTRA",
+            "cpf": "NOME_EXATO_DA_COLUNA_DE_CPF",
+            "bank_code": "NOME_EXATO_DA_COLUNA_DE_BANCO_OU_VAZIO",
+            "agency": "NOME_EXATO_DA_COLUNA_DE_AGENCIA_OU_VAZIO",
+            "account_number": "NOME_EXATO_DA_COLUNA_DE_CONTA_OU_VAZIO",
+            "pix_key": "NOME_EXATO_DA_COLUNA_DE_PIX_OU_VAZIO"
+          }},
+          "reasoning": "Breve explicação. Se as colunas estiverem em linhas de dados (e não no header que o pandas leu), mencione isso."
+        }}
+
+        Se o arquivo for CSV, o 'recommended_sheet' deve ser o nome do arquivo ou '0'.
+        Se não encontrar os dados, retorne o JSON com campos vazios.
+        """
+
+        response = model.generate_content(prompt)
+        json_text = response.text.strip()
+        if "```json" in json_text:
+            json_text = json_text.split("```json")[1].split("```")[0].strip()
+        elif "```" in json_text:
+            json_text = json_text.split("```")[1].split("```")[0].strip()
+            
+        return json.loads(json_text)
+    except Exception as e:
+        print(f"Erro na análise de IA da planilha: {e}")
+        return None
+
 def extract_text_from_pdf(file_path: str) -> str:
     doc = fitz.open(file_path)
     text = ""

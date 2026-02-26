@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  backend:
+    build: 
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: agroserv-backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend/uploads:/app/uploads
+      - ./backend/payroll.db:/app/payroll.db
+    env_file:
+      - ./backend/.env
+    restart: always
+
+# Se você quiser rodar um túnel (Cloudflare) junto, podemos adicionar aqui depois

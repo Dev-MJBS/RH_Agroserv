@@ -1,0 +1,13 @@
+
+> rh-agroserv-frontend@0.0.0 dev
+> next dev
+
+   ▲ Next.js 14.1.0
+   - Local:        http://localhost:3000
+   - Environments: .env.local
+
+ ✓ Ready in 1157ms
+ ○ Compiling / ...
+ ✓ Compiled / in 1474ms (1070 modules)
+   Reload env: .env.local
+ ✓ Compiled in 470ms (1070 modules)
