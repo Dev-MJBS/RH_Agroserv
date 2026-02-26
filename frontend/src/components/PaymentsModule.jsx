@@ -15,10 +15,11 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 const PaymentsModule = ({ user, isAdmin }) => {
   const [activeTab, setActiveTab] = useState('upload'); // 'upload' | 'view'
+  const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [abortController, setAbortController] = useState(null);
   const [mesReferencia, setMesReferencia] = useState('');
   const [files, setFiles] = useState({ convenia: null, payroll: null });
-  const [data, setData] = useState(null); // Result from AI
 
   const handleFileDrop = (e, type) => {
     e.preventDefault();
@@ -36,11 +37,13 @@ const PaymentsModule = ({ user, isAdmin }) => {
   };
 
   const handleProcess = async () => {
-    if (!files.convenia || !files.payroll || !mesReferencia) {
+    if (!mesReferencia || !files.payroll || !files.convenia) {
       alert('Por favor, preencha o mês e envie ambos os arquivos.');
       return;
     }
 
+    const controller = new AbortController();
+    setAbortController(controller);
     setLoading(true);
     const formData = new FormData();
     formData.append('mes_referencia', mesReferencia);
@@ -53,13 +56,18 @@ const PaymentsModule = ({ user, isAdmin }) => {
         headers: { 
           Authorization: `Bearer ${token}`,
           'Content-Type': 'multipart/form-data'
-        }
+        },
+        signal: controller.signal
       });
       console.log("Success:", response.data);
       setData(response.data);
       setActiveTab('view');
       alert('Dados processados com sucesso!');
     } catch (err) {
+      if (axios.isCancel(err)) {
+        console.log("Processamento cancelado pelo usuário");
+        return;
+      }
       console.error(err);
       
       let message = "Erro ao processar arquivos.";
@@ -83,6 +91,15 @@ Para corrigir:
       alert(message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const cancelOperation = () => {
+    if (abortController) {
+      abortController.abort();
+      setLoading(false);
+      setAbortController(null);
+      alert("Processamento cancelado.");
     }
   };
 
@@ -289,6 +306,22 @@ Para corrigir:
               </tbody>
             </table>
           </div>
+        </div>
+      )}
+
+      {loading && (
+        <div className="bg-white dark:bg-slate-900 border dark:border-slate-800 rounded-3xl p-12 text-center shadow-xl">
+          <LucideLoader2 className="animate-spin h-16 w-16 text-blue-600 mx-auto mb-6" />
+          <h3 className="text-2xl font-bold text-gray-800 dark:text-white mb-2">Processando Folha com IA...</h3>
+          <p className="text-gray-500 dark:text-slate-400 mb-8 max-w-md mx-auto">
+            Nossa IA está cruzando os CPFs do Mapa da Folha com os Centros de Custo da Convenia. Aguarde alguns instantes.
+          </p>
+          <button 
+            onClick={cancelOperation}
+            className="px-8 py-3 bg-red-100 text-red-600 hover:bg-red-200 rounded-2xl font-bold transition-all"
+          >
+            Cancelar Operação
+          </button>
         </div>
       )}
     </div>

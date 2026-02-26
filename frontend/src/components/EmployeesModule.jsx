@@ -12,6 +12,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 const EmployeesModule = ({ user }) => {
   const [activeTab, setActiveTab] = useState('list'); // 'list' | 'import'
   const [loading, setLoading] = useState(false);
+  const [abortController, setAbortController] = useState(null);
   const [employees, setEmployees] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [importFile, setImportFile] = useState(null);
@@ -89,6 +90,8 @@ Dica para Firebase: Se o login falhar, adicione seu domínio (${window.location.
   const handleImport = async () => {
     if (!importFile) return;
 
+    const controller = new AbortController();
+    setAbortController(controller);
     setLoading(true);
     setImportResult(null); // Limpa resultados anteriores
     const formData = new FormData();
@@ -101,7 +104,8 @@ Dica para Firebase: Se o login falhar, adicione seu domínio (${window.location.
           Authorization: `Bearer ${token}`,
           'Content-Type': 'multipart/form-data'
         },
-        timeout: 30000 // Imports podem demorar
+        timeout: 60000,
+        signal: controller.signal
       });
       
       const result = response.data;
@@ -119,6 +123,10 @@ Dica para Firebase: Se o login falhar, adicione seu domínio (${window.location.
         console.error("Erro na importação:", result);
       }
     } catch (err) {
+      if (axios.isCancel(err)) {
+        console.log("Importação cancelada pelo usuário");
+        return;
+      }
       console.error("Erro na importação:", err);
       let message = "Erro na comunicação.";
       
@@ -131,6 +139,15 @@ Dica para Firebase: Se o login falhar, adicione seu domínio (${window.location.
       alert(message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const cancelOperation = () => {
+    if (abortController) {
+      abortController.abort();
+      setLoading(false);
+      setAbortController(null);
+      alert("Operação cancelada pelo usuário.");
     }
   };
 
@@ -326,16 +343,31 @@ Dica para Firebase: Se o login falhar, adicione seu domínio (${window.location.
             )}
           </div>
 
-          <button 
-            onClick={handleImport}
-            disabled={!importFile || loading}
-            className={`w-full py-4 rounded-2xl font-bold flex items-center justify-center gap-2 transition-all ${
-              !importFile || loading ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-blue-600 text-white hover:bg-blue-700 shadow-lg shadow-blue-500/20'
-            }`}
-          >
-            {loading ? <LucideLoader2 className="animate-spin" /> : <Download size={20} />}
-            {loading ? "Processando Planilha..." : "Iniciar Importação"}
-          </button>
+          {loading ? (
+            <div className="space-y-4 py-8">
+              <LucideLoader2 className="animate-spin mx-auto text-blue-600" size={48} />
+              <div className="space-y-1">
+                <p className="text-lg font-bold text-gray-800 dark:text-white">Analisando Planilha com IA...</p>
+                <p className="text-sm text-gray-500">Isso pode levar alguns segundos dependendo do tamanho.</p>
+              </div>
+              <button 
+                onClick={cancelOperation}
+                className="px-6 py-2 bg-red-100 text-red-600 hover:bg-red-200 rounded-full font-bold transition-all"
+              >
+                Cancelar Operação
+              </button>
+            </div>
+          ) : (
+            <button 
+              onClick={handleImport}
+              disabled={!importFile || loading}
+              className={`w-full py-4 rounded-2xl font-bold flex items-center justify-center gap-2 transition-all ${
+                !importFile || loading ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-blue-600 text-white hover:bg-blue-700 shadow-lg shadow-blue-500/20'
+              }`}
+            >
+              <Download size={20} /> Iniciar Importação
+            </button>
+          )}
 
           {/* Área de diagnóstico de erros */}
           {importResult && importResult.status === 'error' && (
