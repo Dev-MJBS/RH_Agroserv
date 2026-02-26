@@ -46,16 +46,16 @@ const Sidebar = ({ activeId, onModuleChange, onLogout, user }) => {
       <div className="p-6 flex items-center justify-between">
         {!isCollapsed ? (
           <div className="flex items-center gap-3 overflow-hidden whitespace-nowrap group cursor-default">
-            <div className="w-10 h-10 bg-gradient-to-tr from-blue-600 to-indigo-500 rounded-2xl flex items-center justify-center text-white shadow-xl shadow-blue-500/30 group-hover:rotate-6 transition-transform">
+            <div className="w-10 h-10 bg-gradient-to-tr from-emerald-600 to-green-500 rounded-2xl flex items-center justify-center text-white shadow-xl shadow-emerald-500/30 group-hover:rotate-6 transition-transform">
               <BarChart3 size={22} />
             </div>
-            <div className="flex flex-col">
-              <span className="font-black text-slate-800 dark:text-white leading-tight tracking-tight">RH AGROSERV</span>
-              <span className="text-[10px] text-blue-500 font-extrabold uppercase tracking-[0.2em] animate-pulse">AI Powered</span>
+            <div>
+              <h1 className="font-black text-xl text-gray-800 dark:text-white leading-none tracking-tight">Agroserv AI</h1>
+              <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest mt-1 block">ERP IA-Corporativo</span>
             </div>
           </div>
         ) : (
-          <div className="mx-auto w-10 h-10 bg-gradient-to-tr from-blue-600 to-indigo-500 rounded-2xl flex items-center justify-center text-white shadow-lg">
+          <div className="mx-auto w-10 h-10 bg-gradient-to-tr from-emerald-600 to-green-500 rounded-2xl flex items-center justify-center text-white shadow-lg">
             <BarChart3 size={20} />
           </div>
         )}
@@ -74,16 +74,21 @@ const Sidebar = ({ activeId, onModuleChange, onLogout, user }) => {
           <button
             key={mod.id}
             onClick={() => onModuleChange(mod.id)}
-            className={`w-full flex items-center gap-4 p-4 rounded-2xl transition-all ${
+            className={`w-full flex items-center gap-4 px-4 py-4 rounded-2xl transition-all duration-300 relative group ${
               activeId === mod.id 
-                ? 'bg-blue-600 text-white shadow-xl shadow-blue-500/20' 
-                : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-blue-500'
+                ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400 font-bold' 
+                : 'text-slate-500 hover:bg-gray-100 dark:text-slate-400 dark:hover:bg-slate-800'
             }`}
           >
-            <div className={`${activeId === mod.id ? 'scale-110' : ''} transition-transform`}>
+            {activeId === mod.id && (
+              <div className="absolute left-0 w-1.5 h-8 bg-emerald-600 dark:bg-emerald-500 rounded-r-full" />
+            )}
+            <div className={`transition-transform duration-300 ${activeId === mod.id ? 'scale-110' : 'group-hover:scale-110'}`}>
               {mod.icon}
             </div>
-            {!isCollapsed && <span className="font-bold text-sm tracking-tight">{mod.name}</span>}
+            {!isCollapsed && (
+              <span className="font-bold text-sm tracking-tight">{mod.name}</span>
+            )}
           </button>
         ))}
       </nav>

@@ -19,3 +19,62 @@
  ✓ Compiled in 1426ms (1056 modules)
  ✓ Compiled in 178ms (1056 modules)
  ✓ Compiled in 242ms (857 modules)
+ ⨯ ./src/components/Sidebar.jsx
+Error: 
+  [31mx[0m Expected ',', got 'onClick'
+    ,-[[36;1;4m/Users/mateusjobdebrito/RH_Agroserv/frontend/src/components/Sidebar.jsx[0m:57:1]
+ [2m57[0m |       </div>
+ [2m58[0m | 
+ [2m59[0m |       <button 
+ [2m60[0m |         onClick={() => setIsCollapsed(!isCollapsed)}
+    : [31;1m        ^^^^^^^[0m
+ [2m61[0m |         className="absolute -right-3 top-20 bg-white dark:bg-slate-800 border dark:border-slate-700 p-1.5 rounded-full shadow-md text-slate-400 hover:text-blue-500 transition-all z-[60]"
+ [2m62[0m |       >
+ [2m63[0m |         {isCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
+    `----
+
+Caused by:
+    Syntax Error
+
+Import trace for requested module:
+./src/components/Sidebar.jsx
+./src/components/Dashboard.jsx
+./src/components/AuthWrapper.jsx
+./src/app/page.js
+ ✓ Compiled in 249ms (857 modules)
+ ✓ Compiled in 82ms (857 modules)
+ ⨯ ./src/components/Sidebar.jsx
+Error: 
+  [31mx[0m Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+    ,-[[36;1;4m/Users/mateusjobdebrito/RH_Agroserv/frontend/src/components/Sidebar.jsx[0m:87:1]
+ [2m87[0m |               {mod.icon}
+ [2m88[0m |             </div>
+ [2m89[0m | 
+ [2m90[0m |         ))}
+    : [31;1m          ^[0m
+ [2m91[0m |       </nav>
+ [2m92[0m | 
+ [2m93[0m |       {/* Footer Info / User */}
+    `----
+
+  [31mx[0m Expected corresponding JSX closing tag for <button>
+    ,-[[36;1;4m/Users/mateusjobdebrito/RH_Agroserv/frontend/src/components/Sidebar.jsx[0m:88:1]
+ [2m88[0m |             </div>
+ [2m89[0m | 
+ [2m90[0m |         ))}
+ [2m91[0m |       </nav>
+    : [31;1m      ^^^^^^[0m
+ [2m92[0m | 
+ [2m93[0m |       {/* Footer Info / User */}
+ [2m94[0m |       <div className="p-4 border-t border-slate-100 dark:border-slate-800 space-y-4">
+    `----
+
+Caused by:
+    Syntax Error
+
+Import trace for requested module:
+./src/components/Sidebar.jsx
+./src/components/Dashboard.jsx
+./src/components/AuthWrapper.jsx
+./src/app/page.js
+ ✓ Compiled in 146ms (857 modules)
