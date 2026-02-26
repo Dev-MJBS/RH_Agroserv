@@ -30,15 +30,21 @@ class EmployeeManager:
         """Inicializa o cliente Firestore."""
         if db:
             self.db = db
+            # Em firestore.Client(), o timestamp está em firestore.SERVER_TIMESTAMP
+            # Em firebase_admin.firestore.client(), o timestamp está disponível via módulo
+            from google.cloud import firestore
+            self.timestamp_fn = firestore.SERVER_TIMESTAMP
         else:
-            # Tenta pegar o cliente do firebase_admin (já inicializado no auth)
             try:
                 from firebase_admin import firestore as admin_firestore
                 self.db = admin_firestore.client()
+                # O admin_firestore.SERVER_TIMESTAMP costuma ser o mesmo objeto,
+                # mas vamos garantir o uso da referência correta.
+                self.timestamp_fn = admin_firestore.SERVER_TIMESTAMP
             except Exception:
-                # Fallback para o cliente padrão se necessário
                 from google.cloud import firestore
                 self.db = firestore.Client()
+                self.timestamp_fn = firestore.SERVER_TIMESTAMP
         self.collection_name = "employees"
 
     def _sanitize_cpf(self, cpf: Any) -> str:
@@ -144,8 +150,8 @@ class EmployeeManager:
                             "account_number": str(row.get(found_mapping.get('account_number'), "")).strip(),
                             "pix_key": str(row.get(found_mapping.get('pix_key'), "")).strip()
                         },
-                        "created_at": firestore.SERVER_TIMESTAMP,
-                        "updated_at": firestore.SERVER_TIMESTAMP
+                        "created_at": self.timestamp_fn,
+                        "updated_at": self.timestamp_fn
                     }
 
                     batch.set(doc_ref, data, merge=True)
@@ -195,7 +201,7 @@ class EmployeeManager:
 
         doc_ref.update({
             "status": new_status.upper(),
-            "updated_at": firestore.SERVER_TIMESTAMP
+            "updated_at": self.timestamp_fn
         })
         return True
 
@@ -217,6 +223,6 @@ class EmployeeManager:
         updates.pop("tenant_id", None)
         updates.pop("cpf", None)
         
-        updates["updated_at"] = firestore.SERVER_TIMESTAMP
+        updates["updated_at"] = self.timestamp_fn
         doc_ref.update(updates)
         return True

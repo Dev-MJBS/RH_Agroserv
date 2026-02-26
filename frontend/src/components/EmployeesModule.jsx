@@ -34,7 +34,11 @@ const EmployeesModule = ({ user }) => {
       setEmployees(response.data);
     } catch (err) {
       console.error("Erro ao buscar funcionários:", err);
-      alert("Falha ao carregar lista de funcionários.");
+      const isResponseError = err.response;
+      const errorMessage = isResponseError 
+        ? `Falha ao carregar (${err.response.status}): Tente logar novamente.` 
+        : "O servidor parece estar offline.";
+      alert(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -78,7 +82,12 @@ const EmployeesModule = ({ user }) => {
       }
     } catch (err) {
       console.error(err);
-      alert("Erro crítico na comunicação com o servidor.");
+      const isResponseError = err.response;
+      const errorMessage = isResponseError 
+        ? `Erro do Servidor (${err.response.status}): ${err.response.data?.detail || err.message}` 
+        : `Erro de Conexão: O servidor está offline ou bloqueado por CORS.`;
+      
+      alert(errorMessage);
     } finally {
       setLoading(false);
     }
