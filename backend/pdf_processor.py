@@ -22,35 +22,58 @@ def process_payroll_with_ai(payroll_map_path: str, convenia_path: str, mes_refer
     payroll_text = extract_text_from_pdf(payroll_map_path)
     convenia_text = extract_text_from_pdf(convenia_path)
     
-    model = genai.GenerativeModel('gemini-1.5-pro')
+    model = genai.GenerativeModel('gemini-1.5-pro-002') # Usando a versão mais estável e moderna
     
     prompt = f"""
-    Você é um especialista em RH e Contabilidade. 
-    Recebi dois documentos para o mês {mes_referencia}:
-    1. Mapa da Folha (contém os valores pagos)
-    2. Dados do Convenia (contém dados cadastrais e possivelmente o centro de custo)
-    
-    Sua tarefa é cruzar os dados e extrair uma lista estruturada de pagamentos.
-    Use o Convenia para garantir o Centro de Custo correto de cada funcionário.
-    Use o Mapa da Folha para extrair o Salário Líquido.
-    
-    Retorne APENAS um JSON (lista de objetos):
-    [
-      {{
-        "nome_funcionario": "Nome Completo",
-        "cpf": "000.000.000-00",
-        "salario_liquido": 0.0,
-        "centro_de_custo": "Armazém" | "Limpeza" | "Transporte" | "Administrativo",
-        "dados_bancarios": {{ "banco": "Nome", "agencia": "0000", "conta": "00000-0" }},
-        "mes_referencia": "{mes_referencia}"
-      }}
-    ]
-    
-    TEXTO DO MAPA DA FOLHA:
-    {payroll_text[:10000]}
-    
-    TEXTO DO CONVENIA:
-    {convenia_text[:10000]}
+    Você é um agente especializado em análise de folha de pagamento e alocação de custos. Sua missão é processar dois documentos, extrair dados estruturados e consolidá-los em um JSON final para alimentar um Dashboard de Business Intelligence (BI).
+
+    📥 1. Fontes de Dados
+    - Arquivo A (Convenia): Base cadastral. Contém a relação de funcionários, CPF e, crucialmente, o Centro de Custo (CC) e Departamento.
+    - Arquivo B (Mapa da Folha/Espelho): Base financeira. Contém os valores de Proventos, Descontos, Salário Líquido e encargos (FGTS/INSS).
+
+    🧠 2. Lógica de Processamento (Passo a Passo)
+    - Passo 1: Extrair e Identificar cada funcionário pelo CPF ou Nome Completo.
+    - Passo 2: De-Para de Centros de Custo. Agrupar os funcionários conforme o Centro de Custo extraído do arquivo da Convenia.
+      Categorias Alvo: Armazéns, Limpeza, Transporte, Administrativo, Outros.
+    - Passo 3: Consolidação Financeira. Somar custos (Proventos + Encargos Patronais se houver) por Centro de Custo.
+
+    📤 3. Formato de Saída (JSON Estruturado)
+    Retorne OBRIGATORIAMENTE um objeto JSON seguindo este esquema exato (não adicione texto fora do JSON):
+
+    {{
+      "resumo_mes": {{
+        "total_folha": 0.00,
+        "total_funcionarios": 0,
+        "competencia": "{mes_referencia}"
+      }},
+      "centros_de_custo": [
+        {{
+          "nome": "NOME_DO_CC",
+          "custo_total": 0.00,
+          "quantidade_pessoas": 0,
+          "funcionarios": [
+            {{
+              "nome": "NOME COMPLETO",
+              "cpf": "000.000.000-00",
+              "liquido": 0.00,
+              "cc_original": "CC ORIGINAL",
+              "dados_bancarios": {{ "banco": "NOME", "agencia": "0000", "conta": "00000-0" }}
+            }}
+          ]
+        }}
+      ]
+    }}
+
+    ⚠️ 4. Regras de Exceção
+    - Funcionário Não Encontrado na Convenia: Mover para 'Centro de Custo Não Identificado'.
+    - Valores Monetários: Converter formatos brasileiros (1.250,50) para float (1250.50).
+    - Dados Sensíveis: Inclua o CPF e Dados Bancários apenas para uso interno no banco de dados.
+
+    DADOS DO MAPA DA FOLHA (VALORES):
+    {payroll_text[:12000]}
+
+    DADOS DA CONVENIA (CENTROS DE CUSTO):
+    {convenia_text[:12000]}
     """
     
     response = model.generate_content(prompt)
@@ -64,7 +87,7 @@ def process_payroll_with_ai(payroll_map_path: str, convenia_path: str, mes_refer
         return json.loads(json_text)
     except Exception as e:
         print(f"Error parsing AI response: {e}")
-        return []
+        return {{"resumo_mes": {{"total_folha": 0, "total_funcionarios": 0, "competencia": mes_referencia}}, "centros_de_custo": []}}
 
 def parse_payroll_map(pdf_path: str):
     """

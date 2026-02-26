@@ -45,22 +45,31 @@ async def upload_payroll(
     extracted_data = pdf_processor.process_payroll_with_ai(payroll_path, convenia_path, mes_referencia)
     
     entries = []
-    for item in extracted_data:
-        entry = models.PayrollEntry(
-            nome_funcionario=item.get("nome_funcionario"),
-            cpf=item.get("cpf"),
-            salario_liquido=item.get("salario_liquido"),
-            centro_de_custo=item.get("centro_de_custo"),
-            banco=item.get("dados_bancarios", {}).get("banco"),
-            agencia=item.get("dados_bancarios", {}).get("agencia"),
-            conta=item.get("dados_bancarios", {}).get("conta"),
-            mes_referencia=mes_referencia
-        )
-        db.add(entry)
-        entries.append(entry)
+    # Iterar sobre os Centros de Custo retornados pela IA
+    ccs = extracted_data.get("centros_de_custo", [])
+    
+    for cc in ccs:
+        cc_nome = cc.get("nome", "Não Identificado")
+        for func in cc.get("funcionarios", []):
+            entry = models.PayrollEntry(
+                nome_funcionario=func.get("nome"),
+                cpf=func.get("cpf"),
+                salario_liquido=func.get("liquido"),
+                centro_de_custo=cc_nome, # Usamos o CC consolidado pela IA
+                banco=func.get("dados_bancarios", {}).get("banco"),
+                agencia=func.get("dados_bancarios", {}).get("agencia"),
+                conta=func.get("dados_bancarios", {}).get("conta"),
+                mes_referencia=mes_referencia
+            )
+            db.add(entry)
+            entries.append(entry)
     
     db.commit()
-    return {"message": f"Processados {len(entries)} funcionários para {mes_referencia}", "count": len(entries)}
+    return {
+        "message": f"Processados {len(entries)} funcionários em {len(ccs)} Centros de Custo para {mes_referencia}", 
+        "count": len(entries),
+        "resumo": extracted_data.get("resumo_mes")
+    }
 
 @app.get("/payroll-entries", response_model=List[schemas.PayrollEntryDisplay])
 def get_payroll_entries(db: Session = Depends(get_db), current_user: dict = Depends(firebase_auth.get_current_user)):
