@@ -11,22 +11,35 @@ load_dotenv()
 # Initialize Firebase Admin SDK
 # You need to download serviceAccountKey.json from Firebase Console
 if not firebase_admin._apps:
-    # Tenta descobrir o caminho do certificado de forma robusta
-    base_dir = os.path.dirname(os.path.abspath(__file__))
-    default_path = os.path.join(base_dir, "serviceAccountKey.json")
+    # 1. Tenta carregar as credenciais via variável de ambiente (Para Railway/Production)
+    service_json = os.getenv("FIREBASE_SERVICE_ACCOUNT_JSON")
     
-    cert_path = os.getenv("FIREBASE_SERVICE_ACCOUNT_PATH", default_path)
-    
-    if os.path.exists(cert_path):
-        cred = credentials.Certificate(cert_path)
-        firebase_admin.initialize_app(cred)
+    if service_json:
+        try:
+            import json
+            service_account_info = json.loads(service_json)
+            cred = credentials.Certificate(service_account_info)
+            firebase_admin.initialize_app(cred)
+            print("Firebase Admin SDK initialized using environment variable JSON.")
+        except Exception as e:
+            print(f"Error parsing FIREBASE_SERVICE_ACCOUNT_JSON env var: {e}")
     else:
-        # Tenta no diretório atual de execução como último recurso
-        if os.path.exists("serviceAccountKey.json"):
-            cred = credentials.Certificate("serviceAccountKey.json")
+        # 2. Se não houver variável, tenta descobrir o caminho do arquivo físico (Para Local)
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        default_path = os.path.join(base_dir, "serviceAccountKey.json")
+        
+        cert_path = os.getenv("FIREBASE_SERVICE_ACCOUNT_PATH", default_path)
+        
+        if os.path.exists(cert_path):
+            cred = credentials.Certificate(cert_path)
             firebase_admin.initialize_app(cred)
         else:
-            print(f"Warning: Firebase credentials not found at {cert_path}. Verification will fail.")
+            # Tenta no diretório atual de execução como último recurso
+            if os.path.exists("serviceAccountKey.json"):
+                cred = credentials.Certificate("serviceAccountKey.json")
+                firebase_admin.initialize_app(cred)
+            else:
+                print(f"Warning: Firebase credentials not found at {cert_path}. Verification will fail.")
 
 security = HTTPBearer()
 

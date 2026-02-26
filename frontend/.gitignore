@@ -6,3 +6,10 @@ uploads/
 .env
 serviceAccountKey.json
 dist/
+.next/
+out/
+build/
+.pnp
+.pnp.js
+.next-env.d.ts
+next-env.d.ts
