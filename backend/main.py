@@ -72,8 +72,10 @@ async def root():
     return {"status": "online", "message": "ERP IA-Agroserv", "version": "1.2.0"}
 
 @app.get("/health")
-async def health_check():
+def health_check():
+    """Endpoint simples para o healthcheck do Railway."""
     return {"status": "healthy"}
+
 
 @app.post("/upload-payroll")
 async def upload_payroll(
