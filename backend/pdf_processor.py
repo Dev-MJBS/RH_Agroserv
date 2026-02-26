@@ -9,7 +9,12 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+# Tenta configurar o Gemini de forma segura
+api_key = os.getenv("GEMINI_API_KEY")
+if api_key:
+    genai.configure(api_key=api_key)
+else:
+    print("Warning: GEMINI_API_KEY not found. PDF analysis will not work.")
 
 def analyze_spreadsheet_with_ai(file_path: str):
     """
