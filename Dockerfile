@@ -17,11 +17,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Copia apenas o requirements primeiro para aproveitar o cache de camadas do Docker
-COPY requirements.txt .
+COPY backend/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copia o restante do código do backend
-COPY . .
+# Copia o restante do código do backend para o diretório de trabalho
+COPY backend/ .
 
 # Expõe a porta que o FastAPI usa (Railway usa a variável de ambiente $PORT)
 EXPOSE 8000
