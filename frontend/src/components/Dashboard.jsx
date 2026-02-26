@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import Sidebar from './Sidebar';
 import PaymentsModule from './PaymentsModule';
+import EmployeesModule from './EmployeesModule';
 import { auth, db } from '../firebase';
 import { signOut } from 'firebase/auth';
 import { collection, query, where, getDocs, updateDoc, doc, deleteDoc } from 'firebase/firestore';
@@ -158,6 +159,8 @@ const Dashboard = ({ user, isAdmin }) => {
         );
       case 'payments':
         return <PaymentsModule user={user} isAdmin={isAdmin} />;
+      case 'employees':
+        return <EmployeesModule user={user} />;
       case 'users':
         return <div className="p-8 text-center text-gray-500">Módulo de Usuários em desenvolvimento...</div>;
       case 'settings':

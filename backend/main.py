@@ -7,6 +7,7 @@ import shutil
 
 import models, schemas, database, pdf_processor, firebase_auth
 from database import engine, get_db
+from employee_manager import EmployeeManager
 
 models.Base.metadata.create_all(bind=engine)
 
@@ -19,6 +20,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Inicializa o gerenciador de funcionários
+employee_mgr = EmployeeManager()
 
 @app.post("/upload-payroll")
 async def upload_payroll(
@@ -101,6 +105,67 @@ async def processar_pagamentos(
 @app.get("/payroll-entries", response_model=List[schemas.PayrollEntryDisplay])
 def get_payroll_entries(db: Session = Depends(get_db), current_user: dict = Depends(firebase_auth.get_current_user)):
     return db.query(models.PayrollEntry).all()
+
+@app.post("/employees/import")
+async def import_employees(
+    file: UploadFile = File(...),
+    current_user: dict = Depends(firebase_auth.get_current_user)
+):
+    """
+    Rota para importação massiva de funcionários via planilha (.csv ou .xlsx).
+    """
+    os.makedirs("uploads", exist_ok=True)
+    file_path = f"uploads/import_{file.filename}"
+    
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+    
+    # O tenant_id vem do usuário logado (Firebase UID ou custom claim)
+    tenant_id = current_user.get("uid")
+    
+    result = employee_mgr.import_from_spreadsheet(file_path, tenant_id)
+    
+    # Limpeza do arquivo após processamento
+    if os.path.exists(file_path):
+        os.remove(file_path)
+        
+    if result.get("status") == "error":
+        raise HTTPException(status_code=400, detail=result.get("message"))
+        
+    return result
+
+@app.get("/employees")
+async def list_employees(
+    current_user: dict = Depends(firebase_auth.get_current_user)
+):
+    """Retorna a lista de funcionários do tenant logado."""
+    tenant_id = current_user.get("uid")
+    docs = employee_mgr.db.collection("employees").where("tenant_id", "==", tenant_id).stream()
+    
+    employees = []
+    for doc in docs:
+        emp = doc.to_dict()
+        # Firestore timestamps não são serializáveis por padrão no JSON do FastAPI
+        # Vamos converter ou simplificar para o frontend
+        if "created_at" in emp: del emp["created_at"]
+        if "updated_at" in emp: del emp["updated_at"]
+        employees.append(emp)
+        
+    return employees
+
+@app.patch("/employees/{cpf}/status")
+async def update_employee_status(
+    cpf: str,
+    new_status: str = Form(...),
+    current_user: dict = Depends(firebase_auth.get_current_user)
+):
+    """Atualiza o status de um funcionário específico."""
+    tenant_id = current_user.get("uid")
+    try:
+        employee_mgr.update_status(cpf, tenant_id, new_status)
+        return {"message": "Status atualizado com sucesso"}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 if __name__ == "__main__":
     import uvicorn

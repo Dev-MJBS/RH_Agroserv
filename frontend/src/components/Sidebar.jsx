@@ -2,7 +2,8 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Menu, ChevronLeft, ChevronRight, LogOut, Sun, Moon, 
-  LayoutDashboard, CreditCard, Users, Settings, BarChart3
+  LayoutDashboard, CreditCard, Users, Settings, BarChart3, 
+  ShieldCheck 
 } from 'lucide-react';
 
 const Sidebar = ({ activeId, onModuleChange, onLogout, user }) => {
@@ -30,7 +31,8 @@ const Sidebar = ({ activeId, onModuleChange, onLogout, user }) => {
   const modules = [
     { id: 'home', name: 'Dashboard', icon: <LayoutDashboard size={20} /> },
     { id: 'payments', name: 'Pagamentos', icon: <CreditCard size={20} /> },
-    { id: 'users', name: 'Usuários', icon: <Users size={20} />, adminOnly: true },
+    { id: 'employees', name: 'Funcionários', icon: <Users size={20} /> },
+    { id: 'users', name: 'Acessos/Admin', icon: <ShieldCheck size={20} />, adminOnly: true },
     { id: 'settings', name: 'Ajustes', icon: <Settings size={20} /> },
   ];
 
