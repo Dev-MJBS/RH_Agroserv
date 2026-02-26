@@ -13,22 +13,27 @@ const firebaseConfig = {
   measurementId: "G-0ER0BZ3G9B"
 };
 
-// Verificação de segurança para ajudar no debug
 if (!firebaseConfig.apiKey) {
-  console.error("ERRO CRÍTICO: Variável NEXT_PUBLIC_FIREBASE_API_KEY não foi encontrada.");
+  console.warn("ERRO: Variável NEXT_PUBLIC_FIREBASE_API_KEY não foi encontrada.");
 }
 
 if (!firebaseConfig.appId) {
-  console.error("ERRO CRÍTICO: Variável NEXT_PUBLIC_FIREBASE_APP_ID não foi encontrada.");
+  console.warn("ERRO: Variável NEXT_PUBLIC_FIREBASE_APP_ID não foi encontrada.");
 }
 
-if (firebaseConfig.apiKey && firebaseConfig.apiKey !== "undefined") {
-  console.log("Firebase initialized successfully with Key starting with:", firebaseConfig.apiKey.substring(0, 10));
-} else {
-  console.error("Firebase API Key is missing or invalid. Check your Netlify environment variables.");
+// Initialize Firebase only if we have a valid config
+let app;
+try {
+  if (firebaseConfig.apiKey && firebaseConfig.apiKey !== "undefined") {
+    console.log("Firebase initializing with Key:", firebaseConfig.apiKey.substring(0, 10) + "...");
+    app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+  } else {
+    console.error("Firebase: Configuração incompleta ou 'undefined'.");
+  }
+} catch (error) {
+  console.error("Erro ao inicializar Firebase App:", error);
 }
 
-// Initialize Firebase only if no apps are initialized (for Next.js SSR)
-const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
-export const auth = getAuth(app);
-export const db = getFirestore(app);
+// Exportações protegidas para evitar erros ao importar em outros componentes
+export const auth = app ? getAuth(app) : null;
+export const db = app ? getFirestore(app) : null;

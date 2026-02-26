@@ -13,6 +13,14 @@ export default function AuthWrapper() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
+    // Se o Firebase não foi inicializado (api key faltando), avisa o usuário
+    if (!auth || !db) {
+      console.error("ERRO: Firebase AUTH ou DB não inicializados corretamente.");
+      setError("ERRO DE CONFIGURAÇÃO: As variáveis de ambiente do Firebase não foram encontradas no Netlify. Verifique o arquivo .env no seu computador ou as configurações de Environment Variables no painel do Netlify.");
+      setLoading(false);
+      return;
+    }
+
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       try {
         setError(null);
