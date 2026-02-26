@@ -56,13 +56,20 @@ const EmployeesModule = ({ user }) => {
         const isLocalAPI = API_URL.includes('localhost') || API_URL.includes('127.0.0.1');
 
         if (isHTTPS && isLocalAPI) {
-          message = `ERRO DE SEGURANÇA (Mixed Content): Você está rodando o Frontend em HTTPS (Netlify) mas tentando acessar o Backend em HTTP (Local). 
+          message = `🛡️ BLOQUEIO DE SEGURANÇA (Mixed Content):
           
-Para corrigir:
-1. Use o Frontend local (http://localhost:3000)
-2. OU suba o Backend no Railway e atualize a URL no Netlify.`;
+Você acessou pelo link do Netlify (HTTPS), mas o servidor está no seu computador (HTTP). O Google Chrome bloqueou a conexão automaticamente. 
+
+COMO CORRIGIR AGORA:
+1. Abra o site por este link local: http://localhost:3000
+2. Se o link acima não abrir, execute no terminal: cd frontend && npm run dev
+3. No Firebase Console, vá em Authentication > Settings > Authorized Domains e adicione 'localhost'.`;
         } else {
-          message = `Servidor Offline/Bloqueado: Verifique se o Backend está rodando e se o domínio está em Authorized Domains no Firebase.`;
+          message = `❌ SERVIDOR OFFLINE OU BLOQUEADO:
+          
+O servidor não respondeu. 
+
+Dica para Firebase: Se o login falhar, adicione seu domínio (${window.location.hostname}) em 'Authentication > Settings > Authorized Domains' no Console do Firebase.`;
         }
       } else {
         message = err.message;
