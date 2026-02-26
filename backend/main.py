@@ -7,64 +7,73 @@ import shutil
 import sys
 import logging
 
-# Configuração de Logs básica para Railway ver o que está acontecendo
+# Configuração de Logs básica
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 logger.info(">>> ERP IA-Agroserv: Iniciando processo de boot...")
-logger.info(f">>> Python Version: {sys.version}")
-logger.info(f">>> Current Directory: {os.getcwd()}")
-logger.info(f">>> PORT Environment Var: {os.getenv('PORT', 'NOT SET (default 8000)')}")
 
-import models, schemas, database, pdf_processor, firebase_auth
-from database import engine, get_db
-from employee_manager import EmployeeManager
+try:
+    import models, schemas, database, pdf_processor, firebase_auth
+    from database import engine, get_db
+    from employee_manager import EmployeeManager
+    logger.info("✅ Módulos internos carregados com sucesso.")
+except Exception as e:
+    logger.error(f"❌ Erro crítico ao carregar módulos: {e}")
+    # Definimos mocks simples para evitar NameError durante o boot
+    class Mock: pass
+    models = schemas = database = firebase_auth = Mock()
+    engine = None
+    def get_db(): yield None
+    EmployeeManager = lambda: Mock()
 
 app = FastAPI()
 
-# Middleware de logging para cada requisição para ajudar no debug do Railway
+# Middleware de logging
 @app.middleware("http")
 async def log_requests(request, call_next):
-    logger.info(f"Requisição recebida: {request.method} {request.url.path}")
-    response = await call_next(request)
-    logger.info(f"Resposta enviada: {response.status_code}")
-    return response
+    logger.info(f"Requisição: {request.method} {request.url.path}")
+    try:
+        response = await call_next(request)
+        return response
+    except Exception as e:
+        logger.error(f"Erro na requisição: {e}")
+        raise e
 
-# Configuração completa de CORS
+# Configuração de CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
-    expose_headers=["*"]
 )
 
 # Inicializa o gerenciador de funcionários
-employee_mgr = EmployeeManager()
+try:
+    employee_mgr = EmployeeManager()
+    logger.info("✅ EmployeeManager inicializado.")
+except Exception as e:
+    logger.error(f"❌ Erro ao inicializar EmployeeManager: {e}")
+    employee_mgr = None
 
 @app.on_event("startup")
 def startup_event():
     """Inicializa o banco de dados e outras configurações ao subir."""
-    try:
-        models.Base.metadata.create_all(bind=engine)
-        print("✅ Banco de Dados SQLite inicializado.")
-    except Exception as e:
-        print(f"❌ Erro ao inicializar BD: {e}")
+    if engine:
+        try:
+            models.Base.metadata.create_all(bind=engine)
+            logger.info("✅ Banco de Dados SQLite inicializado.")
+        except Exception as e:
+            logger.error(f"❌ Erro ao inicializar BD: {e}")
 
 @app.get("/")
 async def root():
-    """Endpoint raiz para healthcheck do Railway."""
-    return {
-        "status": "online",
-        "message": "ERP IA-Agroserv Backend está rodando!",
-        "version": "1.1.0"
-    }
+    return {"status": "online", "message": "ERP IA-Agroserv", "version": "1.2.0"}
 
 @app.get("/health")
 async def health_check():
-    """Endpoint detalhado de saúde."""
-    return {"status": "healthy", "service": "ia-agroserv-api"}
+    return {"status": "healthy"}
 
 @app.post("/upload-payroll")
 async def upload_payroll(

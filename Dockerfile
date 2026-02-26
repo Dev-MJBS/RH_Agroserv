@@ -36,5 +36,6 @@ RUN mkdir -p /app/uploads && chmod 777 /app/uploads
 EXPOSE 8000
 
 # Comando para rodar a aplicação usando uvicorn. 
-# O Railway injeta a porta em $PORT. Se não houver, padrão 8000.
-CMD uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000} --workers 1 --proxy-headers
+# Usamos workers=1 para economia de memória em planos gratuitos.
+# Usamos sh -c para garantir que a variável $PORT seja expandida corretamente
+CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000} --proxy-headers"]
