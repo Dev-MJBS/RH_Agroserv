@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, status
+from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, status, Form
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from typing import List
@@ -19,10 +19,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, Form, status
-
-# ...existing code...
 
 @app.post("/upload-payroll")
 async def upload_payroll(
@@ -70,6 +66,37 @@ async def upload_payroll(
         "count": len(entries),
         "resumo": extracted_data.get("resumo_mes")
     }
+
+@app.post("/processar-pagamentos")
+async def processar_pagamentos(
+    mes_referencia: str = Form(...),
+    payroll_map: UploadFile = File(...),
+    convenia_data: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(firebase_auth.get_current_user)
+):
+    """
+    Rota que apenas processa e retorna o JSON estruturado para o frontend,
+    sem persistir (ou persistindo se necessário).
+    """
+    os.makedirs("uploads", exist_ok=True)
+    
+    payroll_path = f"uploads/tmp_mapa_{payroll_map.filename}"
+    convenia_path = f"uploads/tmp_convenia_{convenia_data.filename}"
+    
+    with open(payroll_path, "wb") as buffer:
+        shutil.copyfileobj(payroll_map.file, buffer)
+    with open(convenia_path, "wb") as buffer:
+        shutil.copyfileobj(convenia_data.file, buffer)
+    
+    # Chama o processador Gemini/PyMuPDF
+    extracted_data = pdf_processor.process_payroll_with_ai(payroll_path, convenia_path, mes_referencia)
+    
+    # Limpeza opcional de arquivos temporários
+    # os.remove(payroll_path)
+    # os.remove(convenia_path)
+    
+    return extracted_data
 
 @app.get("/payroll-entries", response_model=List[schemas.PayrollEntryDisplay])
 def get_payroll_entries(db: Session = Depends(get_db), current_user: dict = Depends(firebase_auth.get_current_user)):
