@@ -9,8 +9,6 @@ import models, schemas, database, pdf_processor, firebase_auth
 from database import engine, get_db
 from employee_manager import EmployeeManager
 
-models.Base.metadata.create_all(bind=engine)
-
 app = FastAPI()
 
 # Configuração completa de CORS para aceitar qualquer origem sem falha de preflight
@@ -25,6 +23,29 @@ app.add_middleware(
 
 # Inicializa o gerenciador de funcionários
 employee_mgr = EmployeeManager()
+
+@app.on_event("startup")
+def startup_event():
+    """Inicializa o banco de dados e outras configurações ao subir."""
+    try:
+        models.Base.metadata.create_all(bind=engine)
+        print("✅ Banco de Dados SQLite inicializado.")
+    except Exception as e:
+        print(f"❌ Erro ao inicializar BD: {e}")
+
+@app.get("/")
+async def root():
+    """Endpoint raiz para healthcheck do Railway."""
+    return {
+        "status": "online",
+        "message": "ERP IA-Agroserv Backend está rodando!",
+        "version": "1.1.0"
+    }
+
+@app.get("/health")
+async def health_check():
+    """Endpoint detalhado de saúde."""
+    return {"status": "healthy", "service": "ia-agroserv-api"}
 
 @app.post("/upload-payroll")
 async def upload_payroll(
