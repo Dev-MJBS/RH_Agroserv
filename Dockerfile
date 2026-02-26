@@ -32,9 +32,6 @@ COPY backend/ /app/
 # Garante permissões na pasta de uploads e no banco SQLite
 RUN mkdir -p /app/uploads && chmod 777 /app/uploads
 
-# Expõe a porta que o FastAPI usa (Railway usa a variável de ambiente $PORT)
-EXPOSE 8000
-
 # Usamos o comando direto do Python para carregar o main.py
-# O próprio main.py já lê a porta da variável $PORT corretamente em modo estável.
 CMD ["python", "main.py"]
+
