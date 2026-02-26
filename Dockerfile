@@ -1,5 +1,5 @@
-# Use uma imagem oficial do Python segura e estável
-FROM python:3.10-slim
+# Use uma imagem oficial do Python baseada em Debian Bookworm (Estável)
+FROM python:3.10-slim-bookworm
 
 # Evita que o Python gere arquivos .pyc e permite logs em tempo real
 ENV PYTHONDONTWRITEBYTECODE 1
@@ -10,10 +10,11 @@ ENV PYTHONPATH /app
 WORKDIR /app
 
 # Instala dependências do sistema necessárias para PyMuPDF, Pandas e Networking
+# Trocamos libgl1-mesa-glx por libgl1 pois o pacote mudou de nome no Debian atual
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     libpq-dev \
-    libgl1-mesa-glx \
+    libgl1 \
     libglib2.0-0 \
     net-tools \
     iproute2 \
