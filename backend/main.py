@@ -13,19 +13,9 @@ logger = logging.getLogger(__name__)
 
 logger.info(">>> ERP IA-Agroserv: Iniciando processo de boot...")
 
-try:
-    import models, schemas, database, pdf_processor, firebase_auth
-    from database import engine, get_db
-    from employee_manager import EmployeeManager
-    logger.info("✅ Módulos internos carregados com sucesso.")
-except Exception as e:
-    logger.error(f"❌ Erro crítico ao carregar módulos: {e}")
-    # Definimos mocks simples para evitar NameError durante o boot
-    class Mock: pass
-    models = schemas = database = firebase_auth = Mock()
-    engine = None
-    def get_db(): yield None
-    EmployeeManager = lambda: Mock()
+import models, schemas, database, pdf_processor, firebase_auth
+from database import engine, get_db
+from employee_manager import EmployeeManager
 
 app = FastAPI()
 
@@ -33,12 +23,8 @@ app = FastAPI()
 @app.middleware("http")
 async def log_requests(request, call_next):
     logger.info(f"Requisição: {request.method} {request.url.path}")
-    try:
-        response = await call_next(request)
-        return response
-    except Exception as e:
-        logger.error(f"Erro na requisição: {e}")
-        raise e
+    response = await call_next(request)
+    return response
 
 # Configuração de CORS
 app.add_middleware(
@@ -50,22 +36,16 @@ app.add_middleware(
 )
 
 # Inicializa o gerenciador de funcionários
-try:
-    employee_mgr = EmployeeManager()
-    logger.info("✅ EmployeeManager inicializado.")
-except Exception as e:
-    logger.error(f"❌ Erro ao inicializar EmployeeManager: {e}")
-    employee_mgr = None
+employee_mgr = EmployeeManager()
 
 @app.on_event("startup")
 def startup_event():
     """Inicializa o banco de dados e outras configurações ao subir."""
-    if engine:
-        try:
-            models.Base.metadata.create_all(bind=engine)
-            logger.info("✅ Banco de Dados SQLite inicializado.")
-        except Exception as e:
-            logger.error(f"❌ Erro ao inicializar BD: {e}")
+    try:
+        models.Base.metadata.create_all(bind=engine)
+        logger.info("✅ Banco de Dados SQLite inicializado.")
+    except Exception as e:
+        logger.error(f"❌ Erro ao inicializar BD: {e}")
 
 @app.get("/")
 async def root():
@@ -73,7 +53,6 @@ async def root():
 
 @app.get("/health")
 def health_check():
-    """Endpoint simples para o healthcheck do Railway."""
     return {"status": "healthy"}
 
 
