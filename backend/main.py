@@ -24,12 +24,14 @@ employee_mgr = EmployeeManager()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Lifespan gerenciador: inicializa o banco de dados ao iniciar."""
+    logger.info(">>> Lifespan: Iniciando warmup do servidor e modelos...")
     try:
         models.Base.metadata.create_all(bind=engine)
         logger.info("✅ Banco de Dados SQLite inicializado.")
     except Exception as e:
         logger.error(f"❌ Erro ao inicializar BD: {e}")
     yield
+    logger.info("<<< Lifespan: Desligando servidor...")
 
 app = FastAPI(lifespan=lifespan)
 
@@ -51,7 +53,7 @@ app.add_middleware(
 
 @app.get("/")
 async def root():
-    return {"status": "online", "message": "ERP IA-Agroserv", "version": "1.2.2"}
+    return {"status": "online", "message": "ERP IA-Agroserv", "version": "1.2.3"}
 
 @app.get("/health")
 def health_check():
