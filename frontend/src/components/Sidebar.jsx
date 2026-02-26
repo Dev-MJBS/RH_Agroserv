@@ -38,24 +38,24 @@ const Sidebar = ({ activeId, onModuleChange, onLogout, user }) => {
 
   return (
     <div 
-      className={`relative h-screen bg-white dark:bg-slate-900 border-r border-gray-200 dark:border-slate-800 transition-all duration-300 z-50 flex flex-col ${
+      className={`relative h-screen bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-r border-gray-200/50 dark:border-slate-800/50 transition-all duration-300 z-50 flex flex-col ${
         isCollapsed ? 'w-20' : 'w-72'
       }`}
     >
       {/* Header / Logo */}
       <div className="p-6 flex items-center justify-between">
         {!isCollapsed ? (
-          <div className="flex items-center gap-3 overflow-hidden whitespace-nowrap">
-            <div className="w-10 h-10 bg-blue-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-blue-500/30">
+          <div className="flex items-center gap-3 overflow-hidden whitespace-nowrap group cursor-default">
+            <div className="w-10 h-10 bg-gradient-to-tr from-blue-600 to-indigo-500 rounded-2xl flex items-center justify-center text-white shadow-xl shadow-blue-500/30 group-hover:rotate-6 transition-transform">
               <BarChart3 size={22} />
             </div>
             <div className="flex flex-col">
-              <span className="font-extrabold text-slate-800 dark:text-white leading-tight">RH AGROSERV</span>
-              <span className="text-[10px] text-blue-500 font-black uppercase tracking-widest">Automation AI</span>
+              <span className="font-black text-slate-800 dark:text-white leading-tight tracking-tight">RH AGROSERV</span>
+              <span className="text-[10px] text-blue-500 font-extrabold uppercase tracking-[0.2em] animate-pulse">AI Powered</span>
             </div>
           </div>
         ) : (
-          <div className="mx-auto w-10 h-10 bg-blue-600 rounded-2xl flex items-center justify-center text-white shadow-lg">
+          <div className="mx-auto w-10 h-10 bg-gradient-to-tr from-blue-600 to-indigo-500 rounded-2xl flex items-center justify-center text-white shadow-lg">
             <BarChart3 size={20} />
           </div>
         )}

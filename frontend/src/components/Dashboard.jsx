@@ -67,11 +67,29 @@ const Dashboard = ({ user, isAdmin }) => {
               </div>
               
               <div className="flex items-center gap-3">
-                <button className="flex items-center gap-2 bg-slate-900 border border-slate-700 hover:bg-slate-800 text-slate-400 px-4 py-2 rounded-xl transition-all shadow-lg active:scale-95">
+                <button className="flex items-center gap-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-blue-500/50 text-slate-600 dark:text-slate-400 px-4 py-2 rounded-2xl transition-all shadow-sm hover:shadow-md active:scale-95">
                   <Bell size={18} />
                 </button>
               </div>
             </header>
+
+            {/* Quick Stats Banner */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+               {[
+                 { label: 'Conciliações', value: '12', icon: <FileText size={16}/>, bgColor: 'bg-blue-500/10', textColor: 'text-blue-500' },
+                 { label: 'Funcionários', value: '142', icon: <Users size={16}/>, bgColor: 'bg-indigo-500/10', textColor: 'text-indigo-500' },
+                 { label: 'Eficiência AI', value: '98%', icon: <ShieldCheck size={16}/>, bgColor: 'bg-emerald-500/10', textColor: 'text-emerald-500' },
+                 { label: 'Alertas', value: '0', icon: <AlertCircle size={16}/>, bgColor: 'bg-amber-500/10', textColor: 'text-amber-500' }
+               ].map((stat, i) => (
+                 <div key={i} className="bg-white dark:bg-slate-900 shadow-xl shadow-slate-200/50 dark:shadow-none p-4 rounded-3xl border border-slate-100 dark:border-slate-800 flex flex-col items-center text-center transition-transform hover:-translate-y-1">
+                    <div className={`w-8 h-8 rounded-xl ${stat.bgColor} ${stat.textColor} flex items-center justify-center mb-2`}>
+                      {stat.icon}
+                    </div>
+                    <span className="text-xl font-black text-slate-800 dark:text-white tabular-nums">{stat.value}</span>
+                    <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">{stat.label}</span>
+                 </div>
+               ))}
+            </div>
 
             {/* Quick Actions Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
